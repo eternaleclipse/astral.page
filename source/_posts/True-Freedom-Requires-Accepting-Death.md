@@ -9,7 +9,7 @@ Recently, during dealing with some health issues of a family member, I've had ti
 
 I've long been interested in what Buddhism has to say about this topic. In Buddhism, the Dhamma (Teachings of the Buddha) has a concept called "Three Marks of Existence".
 
-**Annica** (Impermanence): All things are impermanent - Things, people, feelings, ideas. They all arise, exist for a period of time, and then pass away. 
+**Anicca** (Impermanence): All things are impermanent - Things, people, feelings, ideas. They all arise, exist for a period of time, and then pass away. 
 **Dukka** (Suffering, Dissatisfaction): There is inherent suffering or dissatisfaction experienced in life due to the impermanent nature of existence. It can arise from various sources, including craving, attachment, and inability to accept change.
 **Anatta** ("Non-self"): The "self" as a consistent entity is an illusion. There is no unchanging essence or quality within individuals.
 
