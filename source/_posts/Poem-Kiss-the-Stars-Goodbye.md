@@ -6,7 +6,7 @@ tags:
 - gems-off-the-internet
 ---
 
-```
+{% blockquote %}
 Men think themselves just like the Gods,
 and so, the world is theirs alone;
 and all its life, and all its love,
@@ -26,6 +26,6 @@ But we, the ones they leave behind,
 we look above and wish to fly.
 But where to go, into that night,
 after we kiss the stars goodbye?
-```
+{% endblockquote %}
 
 This poem is from an indie shoot-em-up game called [Kiss the Stars Goodbye](https://linker.itch.io/ktsg) by **Linker**.
