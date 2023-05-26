@@ -79,6 +79,79 @@
       <div class="outer">
         <section id="main">
   
+    <article id="post-NixOS-is-so-cool" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2023/05/26/NixOS-is-so-cool/" class="article-date">
+  <time class="dt-published" datetime="2023-05-26T04:30:10.020Z" itemprop="datePublished">2023-05-26</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2023/05/26/NixOS-is-so-cool/">NixOS is so cool!</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>Last night I played with NixOS (huge thanks to my friend <a target="_blank" rel="noopener" href="https://tzlil.net/">Tzlil</a> for the recommendation!) and I had so much fun! It’s a Linux distro, somewhat similar to Arch Linux in terms of minimalist philosophy but with emphasis on reproducibility.</p>
+<p>Keep in mind I’m still a newbie so there is a lot I might be missing in this post! Be sure to check out the (unofficial, community-maintained) <a target="_blank" rel="noopener" href="https://nixos.wiki/">NixOS Wiki</a>.</p>
+<h3 id="Reproducibility"><a href="#Reproducibility" class="headerlink" title="Reproducibility"></a>Reproducibility</h3><p>This basically means that anything you install is automatically added to your nix file(s). You can easily control your entire system configuration - bootloader, partition layout, wpa_supplicant, packages, user profiles, services, environment, software-specific configuration, <strong>Everything</strong> can be declared in the Nix config files. They freakin’ support stuff like chromium &#x2F; firefox profiles and <a target="_blank" rel="noopener" href="https://search.nixos.org/options?channel=unstable&show=programs.chromium.extensions&from=0&size=50&sort=relevance&type=packages&query=programs.chromium">extensions</a>, oh-my-zsh theme, <code>.vimrc</code> options, you name it.</p>
+<p>These config files can be backed up in a git repository that you can easily deploy whenever you need to restore, clone or modify your system.</p>
+<h3 id="Installation"><a href="#Installation" class="headerlink" title="Installation"></a>Installation</h3><p>Installation is super straightforward for what you’d usually expect from this type of minimalistic OS. There is a friendly GUI that lets you pick which type of Desktop Environment you want (if any) and the usual stuff (region, user &#x2F; pass).</p>
+<p><img src="/images/nixos-installer.png"></p>
+<p>I chose GNOME as my Desktop Environment. After the setup finished, I was greeted by this beautiful screen:</p>
+<p><img src="/images/nixos-installed.png"></p>
+<p>The disk usage for the default GNOME installation is just shy of 9 GB.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">[user@nixos:~]$ df -h | grep sda</span><br><span class="line">Filesystem      Size  Used Avail Use% Mounted on</span><br><span class="line">devtmpfs        196M     0  196M   0% /dev</span><br><span class="line">tmpfs           2.0G  8.0K  2.0G   1% /dev/shm</span><br><span class="line">tmpfs           976M   11M  965M   2% /run</span><br><span class="line">tmpfs           2.0G  456K  2.0G   1% /run/wrappers</span><br><span class="line">/dev/sda1        20G  8.7G  9.9G  47% /</span><br><span class="line">tmpfs           391M  116K  390M   1% /run/user/1000</span><br><span class="line">/dev/sr0        2.3G  2.3G     0 100% /run/media/user/nixos-gnome-22.11-x86_64</span><br></pre></td></tr></table></figure>
+
+<h3 id="Enabling-experimental-Nix-features"><a href="#Enabling-experimental-Nix-features" class="headerlink" title="Enabling experimental Nix features"></a>Enabling experimental Nix features</h3><p><strong>Nix</strong> is NixOS’s package manager, it uses it’s own expression-based pure-functional language, “Nix”, to define the logic that decides which packages are installed. The first thing we wanna do is go ahead and enable “experimental” Nix features. This gives us access to stuff like <a target="_blank" rel="noopener" href="https://nixos.wiki/wiki/Flakes">Flakes</a> which are the new way of creating and managing packages.</p>
+<h3 id="Trying-out-packages-temporarily"><a href="#Trying-out-packages-temporarily" class="headerlink" title="Trying out packages temporarily"></a>Trying out packages temporarily</h3><p>If we just wanna play with a package, we can have it downloaded and run temporarily.<br>When the command completes, the package will disappear from our system!</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[user@nixos:~]$ echo 123 | nix run nixpkgs#ripgrep 123</span><br><span class="line">123</span><br><span class="line"></span><br><span class="line">[user@nixos:~]$ rg</span><br><span class="line">rg: command not found</span><br></pre></td></tr></table></figure>
+
+<h3 id="nix-shell"><a href="#nix-shell" class="headerlink" title="nix-shell"></a>nix-shell</h3><p>Using the <a target="_blank" rel="noopener" href="https://nixos.org/manual/nix/stable/command-ref/nix-shell.html">nix-shell</a> command, we can create a temporary, isolated shell environment where we can temporarily play with a package.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">[user@nixos:~]$ nix-shell -p wget</span><br><span class="line">this path will be fetched (0.62 MiB download, 3.25 MiB unpacked):</span><br><span class="line">  /nix/store/biaz74lcslins8c0kl5pv3yzxp1b02qj-wget-1.21.3</span><br><span class="line">copying path &#x27;/nix/store/biaz74lcslins8c0kl5pv3yzxp1b02qj-wget-1.21.3&#x27; from &#x27;https://cache.nixos.org&#x27;...</span><br><span class="line"></span><br><span class="line">[nix-shell:~]$ wget</span><br><span class="line">wget: missing URL</span><br><span class="line">Usage: wget [OPTION]... [URL]...</span><br><span class="line"></span><br><span class="line">Try `wget --help&#x27; for more options.</span><br><span class="line"></span><br><span class="line">[nix-shell:~]$ exit</span><br><span class="line">exit</span><br><span class="line"></span><br><span class="line">[user@nixos:~]$ wget</span><br><span class="line">wget: command not found</span><br></pre></td></tr></table></figure>
+
+<p>You can also use <code>nix-shell</code> with some Nix scripting to make <a target="_blank" rel="noopener" href="https://nixos.wiki/wiki/Development_environment_with_nix-shell">your own isolated development environment</a>. How cool is that!</p>
+<h3 id="Installing-packages-persistently"><a href="#Installing-packages-persistently" class="headerlink" title="Installing packages persistently"></a>Installing packages persistently</h3><p>I’m feeling like typing stuff, so let’s install Vim!<br>To add a package persistently, we can edit our <code>/etc/nixos/configuration.nix</code> and add it here:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">environment.systemPackages = with pkgs; [</span><br><span class="line">  # Existing packages...</span><br><span class="line">  vim</span><br><span class="line">];</span><br></pre></td></tr></table></figure>
+
+<p>Then, we need to run <code>sudo nixos-rebuild switch</code> and it applies our new configuration, installing the package.</p>
+<p>Alternatively, we can simply run <code>sudo nix-env -iA nixos.vim</code>.<br>It actually does the same thing behind the scenes - it changes the <code>configuration.nix</code> file.</p>
+<h3 id="Why-this-excites-me"><a href="#Why-this-excites-me" class="headerlink" title="Why this excites me"></a>Why this excites me</h3><p>I have a problem with system bloat.<br>It’s not so much that I mind some of my disk being consumed by gigabytes of pointless cyber-garbage.</p>
+<p>It’s more about the fact that you’re constantly afraid to change things, because systems become slow and break over time. Sure, there are backups, but is everything really guaranteed to be there and work correctly when something breaks? This has a terrible consequence - You don’t experiment on your host environment, and you don’t improve. You don’t even know what your system is running under the hood because you’re too afraid to look down there! So, how does it do you any good to have your OS entirely open-source if you never change anything because you’re afraid to break stuff? </p>
+<p>Having the entire setup configuration declared in a bunch of files in a git repo just frees me to experiment and try crazy stuff, experiment! Try a new WM, mess with the configs, change the kernel! This is the true spirit of open source. If anything ever breaks, slows down or even gets compromised, I just copy over a bunch of files and do a <code>sudo nixos-rebuild switch</code>, and if I really mess up, I could always reinstall NixOS and apply the configuration, or even <a target="_blank" rel="noopener" href="https://nixos.wiki/wiki/Creating_a_NixOS_live_CD">create an installation ISO based on my config files</a> to get everything back and working.</p>
+<p>If you like a certain setup, you could easily clone it to another PC, or even share it with friends. You could have an entire organizational network definition, including desktops, servers, routers all declared in a central repository, and <a target="_blank" rel="noopener" href="https://nixops.readthedocs.io/en/latest/overview.html">deploy</a> them with a single command, or even have them <a target="_blank" rel="noopener" href="https://nixos.wiki/wiki/Netboot">PXE boot from network</a> and install a fresh config. This level of control and transparency makes maintenance, upgrades, security and life in general so much simpler and more fun.</p>
+<h3 id="References"><a href="#References" class="headerlink" title="References"></a>References</h3><ul>
+<li><a target="_blank" rel="noopener" href="https://nixos.org/">https://nixos.org/</a></li>
+<li><a target="_blank" rel="noopener" href="https://nixos.wiki/">https://nixos.wiki/</a></li>
+<li><a target="_blank" rel="noopener" href="https://fasterthanli.me/series/building-a-rust-service-with-nix/part-9">https://fasterthanli.me/series/building-a-rust-service-with-nix/part-9</a></li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://astral.page/2023/05/26/NixOS-is-so-cool/" data-id="cli42e9l10005cwol202ccqtx" data-title="NixOS is so cool!" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/tech/" rel="tag">tech</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
     <article id="post-Poem-Kiss-the-Stars-Goodbye" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
     <a href="/2023/05/20/Poem-Kiss-the-Stars-Goodbye/" class="article-date">
@@ -112,7 +185,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/20/Poem-Kiss-the-Stars-Goodbye/" data-id="clhwhkp2r0005aromg41f9ai8" data-title="Poem: Kiss the Stars Goodbye" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/20/Poem-Kiss-the-Stars-Goodbye/" data-id="cli42e9l20006cwol9oemhs49" data-title="Poem: Kiss the Stars Goodbye" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -158,7 +231,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/18/The-Importance-of-Preserving-Progress/" data-id="clhwhkp2w000carom5dsf1yz6" data-title="The Importance of Preserving Progress" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/18/The-Importance-of-Preserving-Progress/" data-id="cli42e9l9000dcwol3fi4hnq6" data-title="The Importance of Preserving Progress" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -203,7 +276,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/15/Nature-and-Attention-Restoration/" data-id="clhwhkp2q0004arom6fz07i6i" data-title="Nature&#39;s Restorative Powers" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/15/Nature-and-Attention-Restoration/" data-id="cli42e9l00004cwol4r095g3n" data-title="Nature&#39;s Restorative Powers" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -243,11 +316,16 @@
 <p>I’ve long been interested in what Buddhism has to say about this topic. In Buddhism, the Dhamma (Teachings of the Buddha) has a concept called “Three Marks of Existence”.</p>
 <p><strong>Anicca</strong> (Impermanence): All things are impermanent - Things, people, feelings, ideas. They all arise, exist for a period of time, and then pass away.<br><strong>Dukka</strong> (Suffering, Dissatisfaction): There is inherent suffering or dissatisfaction experienced in life due to the impermanent nature of existence. It can arise from various sources, including craving, attachment, and inability to accept change.<br><strong>Anatta</strong> (“Non-self”): The “self” as a consistent entity is an illusion. There is no unchanging essence or quality within individuals.</p>
 <p>The concept of Anatta is closely tied to the attainment of <strong>Nirvana</strong> (“Enlightenment”). By recognizing the absence of a fixed self, one can free themselves from attachment, craving, and the causes of suffering, ultimately leading to the experience of Nirvana.</p>
+<h3 id="References"><a href="#References" class="headerlink" title="References"></a>References</h3><ul>
+<li><a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Three_marks_of_existence">https://en.wikipedia.org/wiki/Three_marks_of_existence</a></li>
+<li><a target="_blank" rel="noopener" href="https://plumvillage.org/podcast/lessons-in-impermanence-how-to-handle-life-when-everything-changes/">The Way Out is In - Lessons in Impermanence: How to Handle Life when Everything Changes</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=czlMz5IhUww">Former gymnast Tamara O’Brien talks about life after terminal cancer diagnosis</a></li>
+</ul>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/14/True-Freedom-Requires-Accepting-Death/" data-id="clhwhkp2y000farom45d3e4vw" data-title="True Freedom Requires Accepting Death" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/14/True-Freedom-Requires-Accepting-Death/" data-id="cli42e9lc000icwolfldudgh1" data-title="True Freedom Requires Accepting Death" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -289,7 +367,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/13/Priming-the-Mind/" data-id="clhwhkp2s0006aromc5x22k8a" data-title="Priming the Mind" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/13/Priming-the-Mind/" data-id="cli42e9l50009cwoldg0bgti7" data-title="Priming the Mind" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -330,7 +408,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/13/The-Immense-Joy-of-Deep-Work/" data-id="clhwhkp2v000aaromh7h4ewrg" data-title="The Immense Joy of Deep Work" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/13/The-Immense-Joy-of-Deep-Work/" data-id="cli42e9l8000ccwol3cwlg5im" data-title="The Immense Joy of Deep Work" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -376,7 +454,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/13/Ghosts-of-Distraction/" data-id="clhwhkp2n0002arom0u3g08oj" data-title="Ghosts of Distraction" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/13/Ghosts-of-Distraction/" data-id="cli42e9kv0002cwol5pskagrj" data-title="Ghosts of Distraction" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -415,11 +493,14 @@
         <p>It took me far too long to realize this one, but it seems like the mind is like a plant… Do not let it’s silence misguide you, it has access to all the information about your intentions. It <strong>feels</strong> when you’re genuinely interesting in something, and when you’re bluffing, lying to yourself because there’s some arbitrary deadline for a generic test that some pile of carbon molecules wrote…</p>
 <p>If you pour a bucket of water over a plant, it won’t magically grow and become 10 times bigger. The mind thrives in environments where it’s externally stimulated and it can interact and play with things, like a kid - to ask questions, solve mysteries, explore, make stuff happen!</p>
 <p>The way I phrase work in my mind before I approach it, whether in a specific session or in general, can affect my productivity by hundreds of percents. It’s a relatively elusive matter, because the moment I think of it in these terms, measuring and optimizing performance, the magic disappears. I find it’s best to just be present in the flow, immerse yourself in the rhythm and let the mind take over.</p>
-
+<h3 id="The-inner-child-learns-and-creates-through-playing"><a href="#The-inner-child-learns-and-creates-through-playing" class="headerlink" title="The inner child learns and creates through playing"></a>The inner child learns and creates through playing</h3><p>A while ago, I’ve started working through a wonderful book that takes you through a psychological journey to reconnect with your inner child through art and dialogue. This quote particularily resonated with the idea of freeing your mind to learn by playing, messing around and having fun.</p>
+<blockquote><p>“It is a well-known fact that children develop and learn through play. While playing they explore, test their limits, and develop skills. Allowed to play without pressure and criticism, children’s true creativity blossoms from within. Watch any group of nursery school kids or kindergartners. Left to their own devices they will play with finger paints and clay, scribble with crayons, erect entire cities with building blocks, create magical castles and landscapes in the sandbox, and invent their own world through dramatic play with costumes and props.</p>
+<p>Metaphors are natural to children. They adore make-believe. The youngest children create scenarios and act them out. They can turn anything into a prop. A broom handle becomes a sword. A garbage can lid becomes a shield, and a packing crate becomes a fort. No one has to teach children the fun of creative play. It is an intrinsic human ability that shows itself best in the child. On the contrary, society teaches children to stop being creative, to grow up, and to be “practical.” If the Inner Child is to be fully reclaimed, this innate creativity must be allowed to express itself. This creative aspect of the Inner Child is often called the Magical Child”.</p>
+<footer><strong>Lucia Cacapacchione, PHD</strong><cite><a target="_blank" rel="noopener" href="https://www.amazon.com/Recovery-Your-Inner-Child-Liberating/dp/0671701355">Recovery of Your Inner Child (1991)</a></cite></footer></blockquote>
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/13/The-Playful-Mind/" data-id="clhwhkp2x000darom1j7e1x1g" data-title="The Playful Mind" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/13/The-Playful-Mind/" data-id="cli42e9la000gcwol4yifh43y" data-title="The Playful Mind" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -495,7 +576,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/11/Recipe-Broccoli-Curry/" data-id="clhwhkp2u0009aromc88r4m81" data-title="Recipe: Broccoli Curry" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/11/Recipe-Broccoli-Curry/" data-id="cli42e9l6000acwolecna40wm" data-title="Recipe: Broccoli Curry" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -509,52 +590,12 @@
 
 
   
-    <article id="post-Awakening" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
-  <div class="article-meta">
-    <a href="/2023/04/29/Awakening/" class="article-date">
-  <time class="dt-published" datetime="2023-04-29T18:53:24.000Z" itemprop="datePublished">2023-04-29</time>
-</a>
+
+
+  <nav id="page-nav">
     
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="p-name article-title" href="/2023/04/29/Awakening/">Awakening</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="e-content article-entry" itemprop="articleBody">
-      
-        <p>In the modern era, technological and societal advancements have given us the means to live lives that our ancestors could only dream of. We have access to superpowers that the even royalty did not possess - Internet (greatest network of knowledge in history), instant worldwide communication, global travel, healthcare (along with <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Life_expectancy#Variation_over_time">absurdly long lifespans</a>!).</p>
-<p>As it turns out, despite these incredible advancements, many individuals struggle to harness the full potential of these tools in their lives. Instead of embracing the opportunities that the modern age offers, they find themselves turning to non-constructive patterns of thinking and behaving. The advancements have also come with their own set of mental chains, traps and barriers [<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Information_overload">1</a>] [<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Analysis_paralysis">2</a>] [<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Occupational_burnout">3</a>] [<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Perfectionism_(psychology)">4</a>] [<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Fear_of_negative_evaluation">5</a>] [<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Fear_of_missing_out">6</a>] [<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Impostor_syndrome">7</a>] [<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Cognitive_dissonance">8</a>] [<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Toxic_positivity">9</a>] [<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Social_comparison_theory">10</a>] [<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Cynicism_(contemporary)">11</a>] [<a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Existential_nihilism">12</a>].</p>
-<p>To rise above, we must make conscious choices to embrace the opportunities given to us, and decide what we can leave out. By treating our minds and lives as the precious gifts they are, we can begin to live life fully, taking charge of our learning, health, relationships, time, purpose. The power is in our hands to elevate ourselves beyond these challenges and create a life of significance, to awaken to the potential that lies within us.</p>
-<p>It may not always be easy but there are vast amounts of resources out there for achieving virtually any dream or mission that the human mind aspires to.</p>
-<p>Let us heed to the call of the unknown… Greatness awaits.</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="https://astral.page/2023/04/29/Awakening/" data-id="clhwhkp2k0001arom5cewdfr9" data-title="Awakening" class="article-share-link"><span class="fa fa-share">Share</span></a>
-      
-      
-      
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/self-improvement/" rel="tag">self-improvement</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-
-  
-
+    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="extend next" rel="next" href="/page/2/">Next &raquo;</a>
+  </nav>
 
 </section>
         
@@ -567,7 +608,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/documentation/" rel="tag">documentation</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/focus/" rel="tag">focus</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/food/" rel="tag">food</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/gems-off-the-internet/" rel="tag">gems-off-the-internet</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/poetry/" rel="tag">poetry</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/self-improvement/" rel="tag">self-improvement</a></li></ul>
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/documentation/" rel="tag">documentation</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/focus/" rel="tag">focus</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/food/" rel="tag">food</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/gems-off-the-internet/" rel="tag">gems-off-the-internet</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/poetry/" rel="tag">poetry</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/self-improvement/" rel="tag">self-improvement</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tech/" rel="tag">tech</a></li></ul>
     </div>
   </div>
 
@@ -577,7 +618,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/documentation/" style="font-size: 10px;">documentation</a> <a href="/tags/focus/" style="font-size: 15px;">focus</a> <a href="/tags/food/" style="font-size: 10px;">food</a> <a href="/tags/gems-off-the-internet/" style="font-size: 10px;">gems-off-the-internet</a> <a href="/tags/poetry/" style="font-size: 10px;">poetry</a> <a href="/tags/self-improvement/" style="font-size: 20px;">self-improvement</a>
+      <a href="/tags/documentation/" style="font-size: 10px;">documentation</a> <a href="/tags/focus/" style="font-size: 15px;">focus</a> <a href="/tags/food/" style="font-size: 10px;">food</a> <a href="/tags/gems-off-the-internet/" style="font-size: 10px;">gems-off-the-internet</a> <a href="/tags/linux/" style="font-size: 10px;">linux</a> <a href="/tags/poetry/" style="font-size: 10px;">poetry</a> <a href="/tags/self-improvement/" style="font-size: 20px;">self-improvement</a> <a href="/tags/tech/" style="font-size: 10px;">tech</a>
     </div>
   </div>
 
@@ -599,6 +640,10 @@
       <ul>
         
           <li>
+            <a href="/2023/05/26/NixOS-is-so-cool/">NixOS is so cool!</a>
+          </li>
+        
+          <li>
             <a href="/2023/05/20/Poem-Kiss-the-Stars-Goodbye/">Poem: Kiss the Stars Goodbye</a>
           </li>
         
@@ -612,10 +657,6 @@
         
           <li>
             <a href="/2023/05/14/True-Freedom-Requires-Accepting-Death/">True Freedom Requires Accepting Death</a>
-          </li>
-        
-          <li>
-            <a href="/2023/05/13/Priming-the-Mind/">Priming the Mind</a>
           </li>
         
       </ul>

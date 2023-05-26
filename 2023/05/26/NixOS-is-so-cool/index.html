@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>NixOS is so cool! | Astral</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="Last night I played with NixOS (huge thanks to my friend Tzlil for the recommendation!) and I had so much fun! It’s a Linux distro, somewhat similar to Arch Linux in terms of minimalist philosophy but">
+<meta property="og:type" content="article">
+<meta property="og:title" content="NixOS is so cool!">
+<meta property="og:url" content="https://astral.page/2023/05/26/NixOS-is-so-cool/index.html">
+<meta property="og:site_name" content="Astral">
+<meta property="og:description" content="Last night I played with NixOS (huge thanks to my friend Tzlil for the recommendation!) and I had so much fun! It’s a Linux distro, somewhat similar to Arch Linux in terms of minimalist philosophy but">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://astral.page/images/nixos-installer.png">
+<meta property="og:image" content="https://astral.page/images/nixos-installed.png">
+<meta property="article:published_time" content="2023-05-26T04:30:10.020Z">
+<meta property="article:modified_time" content="2023-05-26T04:30:10.020Z">
+<meta property="article:author" content="Astral">
+<meta property="article:tag" content="tech">
+<meta property="article:tag" content="linux">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://astral.page/images/nixos-installer.png">
+  
+    <link rel="alternate" href="/atom.xml" title="Astral" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/css/images/favicon.ico">
+  
+  
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Astral</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">a space for growth ✨</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+          <a class="main-nav-link" href="/about">About</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS Feed"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="Search"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://astral.page"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-NixOS-is-so-cool" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2023/05/26/NixOS-is-so-cool/" class="article-date">
+  <time class="dt-published" datetime="2023-05-26T04:30:10.020Z" itemprop="datePublished">2023-05-26</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      NixOS is so cool!
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>Last night I played with NixOS (huge thanks to my friend <a target="_blank" rel="noopener" href="https://tzlil.net/">Tzlil</a> for the recommendation!) and I had so much fun! It’s a Linux distro, somewhat similar to Arch Linux in terms of minimalist philosophy but with emphasis on reproducibility.</p>
+<p>Keep in mind I’m still a newbie so there is a lot I might be missing in this post! Be sure to check out the (unofficial, community-maintained) <a target="_blank" rel="noopener" href="https://nixos.wiki/">NixOS Wiki</a>.</p>
+<h3 id="Reproducibility"><a href="#Reproducibility" class="headerlink" title="Reproducibility"></a>Reproducibility</h3><p>This basically means that anything you install is automatically added to your nix file(s). You can easily control your entire system configuration - bootloader, partition layout, wpa_supplicant, packages, user profiles, services, environment, software-specific configuration, <strong>Everything</strong> can be declared in the Nix config files. They freakin’ support stuff like chromium &#x2F; firefox profiles and <a target="_blank" rel="noopener" href="https://search.nixos.org/options?channel=unstable&show=programs.chromium.extensions&from=0&size=50&sort=relevance&type=packages&query=programs.chromium">extensions</a>, oh-my-zsh theme, <code>.vimrc</code> options, you name it.</p>
+<p>These config files can be backed up in a git repository that you can easily deploy whenever you need to restore, clone or modify your system.</p>
+<h3 id="Installation"><a href="#Installation" class="headerlink" title="Installation"></a>Installation</h3><p>Installation is super straightforward for what you’d usually expect from this type of minimalistic OS. There is a friendly GUI that lets you pick which type of Desktop Environment you want (if any) and the usual stuff (region, user &#x2F; pass).</p>
+<p><img src="/images/nixos-installer.png"></p>
+<p>I chose GNOME as my Desktop Environment. After the setup finished, I was greeted by this beautiful screen:</p>
+<p><img src="/images/nixos-installed.png"></p>
+<p>The disk usage for the default GNOME installation is just shy of 9 GB.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">[user@nixos:~]$ df -h | grep sda</span><br><span class="line">Filesystem      Size  Used Avail Use% Mounted on</span><br><span class="line">devtmpfs        196M     0  196M   0% /dev</span><br><span class="line">tmpfs           2.0G  8.0K  2.0G   1% /dev/shm</span><br><span class="line">tmpfs           976M   11M  965M   2% /run</span><br><span class="line">tmpfs           2.0G  456K  2.0G   1% /run/wrappers</span><br><span class="line">/dev/sda1        20G  8.7G  9.9G  47% /</span><br><span class="line">tmpfs           391M  116K  390M   1% /run/user/1000</span><br><span class="line">/dev/sr0        2.3G  2.3G     0 100% /run/media/user/nixos-gnome-22.11-x86_64</span><br></pre></td></tr></table></figure>
+
+<h3 id="Enabling-experimental-Nix-features"><a href="#Enabling-experimental-Nix-features" class="headerlink" title="Enabling experimental Nix features"></a>Enabling experimental Nix features</h3><p><strong>Nix</strong> is NixOS’s package manager, it uses it’s own expression-based pure-functional language, “Nix”, to define the logic that decides which packages are installed. The first thing we wanna do is go ahead and enable “experimental” Nix features. This gives us access to stuff like <a target="_blank" rel="noopener" href="https://nixos.wiki/wiki/Flakes">Flakes</a> which are the new way of creating and managing packages.</p>
+<h3 id="Trying-out-packages-temporarily"><a href="#Trying-out-packages-temporarily" class="headerlink" title="Trying out packages temporarily"></a>Trying out packages temporarily</h3><p>If we just wanna play with a package, we can have it downloaded and run temporarily.<br>When the command completes, the package will disappear from our system!</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[user@nixos:~]$ echo 123 | nix run nixpkgs#ripgrep 123</span><br><span class="line">123</span><br><span class="line"></span><br><span class="line">[user@nixos:~]$ rg</span><br><span class="line">rg: command not found</span><br></pre></td></tr></table></figure>
+
+<h3 id="nix-shell"><a href="#nix-shell" class="headerlink" title="nix-shell"></a>nix-shell</h3><p>Using the <a target="_blank" rel="noopener" href="https://nixos.org/manual/nix/stable/command-ref/nix-shell.html">nix-shell</a> command, we can create a temporary, isolated shell environment where we can temporarily play with a package.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">[user@nixos:~]$ nix-shell -p wget</span><br><span class="line">this path will be fetched (0.62 MiB download, 3.25 MiB unpacked):</span><br><span class="line">  /nix/store/biaz74lcslins8c0kl5pv3yzxp1b02qj-wget-1.21.3</span><br><span class="line">copying path &#x27;/nix/store/biaz74lcslins8c0kl5pv3yzxp1b02qj-wget-1.21.3&#x27; from &#x27;https://cache.nixos.org&#x27;...</span><br><span class="line"></span><br><span class="line">[nix-shell:~]$ wget</span><br><span class="line">wget: missing URL</span><br><span class="line">Usage: wget [OPTION]... [URL]...</span><br><span class="line"></span><br><span class="line">Try `wget --help&#x27; for more options.</span><br><span class="line"></span><br><span class="line">[nix-shell:~]$ exit</span><br><span class="line">exit</span><br><span class="line"></span><br><span class="line">[user@nixos:~]$ wget</span><br><span class="line">wget: command not found</span><br></pre></td></tr></table></figure>
+
+<p>You can also use <code>nix-shell</code> with some Nix scripting to make <a target="_blank" rel="noopener" href="https://nixos.wiki/wiki/Development_environment_with_nix-shell">your own isolated development environment</a>. How cool is that!</p>
+<h3 id="Installing-packages-persistently"><a href="#Installing-packages-persistently" class="headerlink" title="Installing packages persistently"></a>Installing packages persistently</h3><p>I’m feeling like typing stuff, so let’s install Vim!<br>To add a package persistently, we can edit our <code>/etc/nixos/configuration.nix</code> and add it here:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">environment.systemPackages = with pkgs; [</span><br><span class="line">  # Existing packages...</span><br><span class="line">  vim</span><br><span class="line">];</span><br></pre></td></tr></table></figure>
+
+<p>Then, we need to run <code>sudo nixos-rebuild switch</code> and it applies our new configuration, installing the package.</p>
+<p>Alternatively, we can simply run <code>sudo nix-env -iA nixos.vim</code>.<br>It actually does the same thing behind the scenes - it changes the <code>configuration.nix</code> file.</p>
+<h3 id="Why-this-excites-me"><a href="#Why-this-excites-me" class="headerlink" title="Why this excites me"></a>Why this excites me</h3><p>I have a problem with system bloat.<br>It’s not so much that I mind some of my disk being consumed by gigabytes of pointless cyber-garbage.</p>
+<p>It’s more about the fact that you’re constantly afraid to change things, because systems become slow and break over time. Sure, there are backups, but is everything really guaranteed to be there and work correctly when something breaks? This has a terrible consequence - You don’t experiment on your host environment, and you don’t improve. You don’t even know what your system is running under the hood because you’re too afraid to look down there! So, how does it do you any good to have your OS entirely open-source if you never change anything because you’re afraid to break stuff? </p>
+<p>Having the entire setup configuration declared in a bunch of files in a git repo just frees me to experiment and try crazy stuff, experiment! Try a new WM, mess with the configs, change the kernel! This is the true spirit of open source. If anything ever breaks, slows down or even gets compromised, I just copy over a bunch of files and do a <code>sudo nixos-rebuild switch</code>, and if I really mess up, I could always reinstall NixOS and apply the configuration, or even <a target="_blank" rel="noopener" href="https://nixos.wiki/wiki/Creating_a_NixOS_live_CD">create an installation ISO based on my config files</a> to get everything back and working.</p>
+<p>If you like a certain setup, you could easily clone it to another PC, or even share it with friends. You could have an entire organizational network definition, including desktops, servers, routers all declared in a central repository, and <a target="_blank" rel="noopener" href="https://nixops.readthedocs.io/en/latest/overview.html">deploy</a> them with a single command, or even have them <a target="_blank" rel="noopener" href="https://nixos.wiki/wiki/Netboot">PXE boot from network</a> and install a fresh config. This level of control and transparency makes maintenance, upgrades, security and life in general so much simpler and more fun.</p>
+<h3 id="References"><a href="#References" class="headerlink" title="References"></a>References</h3><ul>
+<li><a target="_blank" rel="noopener" href="https://nixos.org/">https://nixos.org/</a></li>
+<li><a target="_blank" rel="noopener" href="https://nixos.wiki/">https://nixos.wiki/</a></li>
+<li><a target="_blank" rel="noopener" href="https://fasterthanli.me/series/building-a-rust-service-with-nix/part-9">https://fasterthanli.me/series/building-a-rust-service-with-nix/part-9</a></li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://astral.page/2023/05/26/NixOS-is-so-cool/" data-id="cli42e9l10005cwol202ccqtx" data-title="NixOS is so cool!" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/tech/" rel="tag">tech</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2023/05/20/Poem-Kiss-the-Stars-Goodbye/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Poem: Kiss the Stars Goodbye</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/documentation/" rel="tag">documentation</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/focus/" rel="tag">focus</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/food/" rel="tag">food</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/gems-off-the-internet/" rel="tag">gems-off-the-internet</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/poetry/" rel="tag">poetry</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/self-improvement/" rel="tag">self-improvement</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tech/" rel="tag">tech</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/documentation/" style="font-size: 10px;">documentation</a> <a href="/tags/focus/" style="font-size: 15px;">focus</a> <a href="/tags/food/" style="font-size: 10px;">food</a> <a href="/tags/gems-off-the-internet/" style="font-size: 10px;">gems-off-the-internet</a> <a href="/tags/linux/" style="font-size: 10px;">linux</a> <a href="/tags/poetry/" style="font-size: 10px;">poetry</a> <a href="/tags/self-improvement/" style="font-size: 20px;">self-improvement</a> <a href="/tags/tech/" style="font-size: 10px;">tech</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/05/">May 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/04/">April 2023</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2023/05/26/NixOS-is-so-cool/">NixOS is so cool!</a>
+          </li>
+        
+          <li>
+            <a href="/2023/05/20/Poem-Kiss-the-Stars-Goodbye/">Poem: Kiss the Stars Goodbye</a>
+          </li>
+        
+          <li>
+            <a href="/2023/05/18/The-Importance-of-Preserving-Progress/">The Importance of Preserving Progress</a>
+          </li>
+        
+          <li>
+            <a href="/2023/05/15/Nature-and-Attention-Restoration/">Nature&#39;s Restorative Powers</a>
+          </li>
+        
+          <li>
+            <a href="/2023/05/14/True-Freedom-Requires-Accepting-Death/">True Freedom Requires Accepting Death</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2023 Astral<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+    <a href="/about" class="mobile-nav-link">About</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>
