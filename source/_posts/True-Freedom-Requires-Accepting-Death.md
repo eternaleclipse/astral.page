@@ -14,3 +14,8 @@ I've long been interested in what Buddhism has to say about this topic. In Buddh
 **Anatta** ("Non-self"): The "self" as a consistent entity is an illusion. There is no unchanging essence or quality within individuals.
 
 The concept of Anatta is closely tied to the attainment of **Nirvana** ("Enlightenment"). By recognizing the absence of a fixed self, one can free themselves from attachment, craving, and the causes of suffering, ultimately leading to the experience of Nirvana.
+
+### References
+- https://en.wikipedia.org/wiki/Three_marks_of_existence
+- [The Way Out is In - Lessons in Impermanence: How to Handle Life when Everything Changes](https://plumvillage.org/podcast/lessons-in-impermanence-how-to-handle-life-when-everything-changes/)
+- [Former gymnast Tamara O'Brien talks about life after terminal cancer diagnosis](https://www.youtube.com/watch?v=czlMz5IhUww)
