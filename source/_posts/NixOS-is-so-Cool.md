@@ -1,5 +1,5 @@
 ---
-title: NixOS is so cool!
+title: NixOS is so Cool!
 tags:
 - tech
 - linux
