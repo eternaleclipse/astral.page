@@ -14,7 +14,7 @@ Here are the things that I wish for myself. What are yours?
 ### Appreciation
 - To remind myself of the absurdly improbable nature of this magical existence
 - To take a moment to appreciate and celebrate
-  - Our beautiful planet, it's vast landscapes and the plants and animals that inhabit it
+  - Our beautiful planet, it's [vast landscapes](https://500px.com/popular/landscapes) and the plants and animals that inhabit it
   - Human achievement and expression, history, art and music, science and technology
   - The (absurdly unnecessary, but imperssive) complexity of modern tech
   - The Internet and it's memes
