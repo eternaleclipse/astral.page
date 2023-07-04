@@ -190,4 +190,4 @@ Let's see what happens.
 
 We are successfully intercepting number addition operations with `gdb`!1
 
-In the [Next part](2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/), we will look at implementing this hook from within Python, without the use of a debugger.
+In the [Next part](/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/), we will look at implementing this hook from within Python, without the use of a debugger.

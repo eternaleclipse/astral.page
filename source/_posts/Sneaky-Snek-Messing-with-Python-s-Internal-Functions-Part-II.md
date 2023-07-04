@@ -8,7 +8,7 @@ tags:
 - hacking
 ---
 
-Greetings, fellow hackers and tinkerers, and welcome to the second installation of the "Sneaky Snek" blog post series! This series is dedicated to having fun messing around with CPython's core functionality and modifying arithmetic operator implementation in runtime. In the [Previous Part](2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/), we've started diving into CPython's implementation of the `+` operator, `PyNumber_Add`, intercepted number addition operations using `gdb` breakpoint commands, inspected the `PyObject` arguments and modified the result in an automated fashion.
+Greetings, fellow hackers and tinkerers, and welcome to the second installation of the "Sneaky Snek" blog post series! This series is dedicated to having fun messing around with CPython's core functionality and modifying arithmetic operator implementation in runtime. In the [Previous Part](/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/), we've started diving into CPython's implementation of the `+` operator, `PyNumber_Add`, intercepted number addition operations using `gdb` breakpoint commands, inspected the `PyObject` arguments and modified the result in an automated fashion.
 
 In this part, we will explore inline hooking of the function from within a Python script using `ctypes`.
 
@@ -225,4 +225,4 @@ memmove: 0x50f750
 It works!! Good snek!
 
 I hope you enjoyed taking this journey into Python internals with me!
-In the [Next Part](), we will explore further extending this into a backdoor that given specific input, will give us a reverse shell.
+In the [Next Part](/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/), we will explore further extending this into a backdoor that given specific input, will give us a reverse shell.
