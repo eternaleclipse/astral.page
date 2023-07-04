@@ -1,5 +1,6 @@
 ---
 title: NixOS is so Cool!
+date: 2023-05-26 01:02:15
 tags:
 - tech
 - linux
