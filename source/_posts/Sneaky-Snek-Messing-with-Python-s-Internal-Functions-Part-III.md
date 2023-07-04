@@ -1,6 +1,6 @@
 ---
 title: 'Sneaky Snek: Messing with Python''s Internal Functions (Part III)'
-date: 2023-05-28 01:02:15
+date: 2023-07-04 01:02:15
 tags:
 ---
 

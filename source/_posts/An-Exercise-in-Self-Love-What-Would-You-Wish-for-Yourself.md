@@ -1,5 +1,6 @@
 ---
 title: 'An Exercise in Self Love: What Would You Wish for Yourself?'
+date: 2023-05-28 01:02:15
 tags:
 - self-improvement
 ---
