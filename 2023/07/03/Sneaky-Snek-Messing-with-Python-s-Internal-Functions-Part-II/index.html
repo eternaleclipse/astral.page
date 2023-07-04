@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  
+  <title>Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II) | Astral</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="Greetings, fellow hackers and tinkerers, and welcome to the second installation of the “Sneaky Snek” blog post series! This series is dedicated to having fun messing around with CPython’s core functio">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II)">
+<meta property="og:url" content="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/index.html">
+<meta property="og:site_name" content="Astral">
+<meta property="og:description" content="Greetings, fellow hackers and tinkerers, and welcome to the second installation of the “Sneaky Snek” blog post series! This series is dedicated to having fun messing around with CPython’s core functio">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-07-03T21:34:31.000Z">
+<meta property="article:modified_time" content="2023-07-04T00:10:10.693Z">
+<meta property="article:author" content="Astral">
+<meta property="article:tag" content="tech">
+<meta property="article:tag" content="python">
+<meta property="article:tag" content="internals">
+<meta property="article:tag" content="hacking">
+<meta name="twitter:card" content="summary">
+  
+    <link rel="alternate" href="/atom.xml" title="Astral" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/css/images/favicon.ico">
+  
+  
+    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+
+  
+  
+<link rel="stylesheet" href="/css/style.css">
+
+  
+    
+<link rel="stylesheet" href="/fancybox/jquery.fancybox.min.css">
+
+  
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body>
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/" id="logo">Astral</a>
+      </h1>
+      
+        <h2 id="subtitle-wrap">
+          <a href="/" id="subtitle">a space for growth ✨</a>
+        </h2>
+      
+    </div>
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"><span class="fa fa-bars"></span></a>
+        
+          <a class="main-nav-link" href="/">Home</a>
+        
+          <a class="main-nav-link" href="/archives">Archives</a>
+        
+          <a class="main-nav-link" href="/about">About</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+        
+          <a class="nav-icon" href="/atom.xml" title="RSS Feed"><span class="fa fa-rss"></span></a>
+        
+        <a class="nav-icon nav-search-btn" title="Search"><span class="fa fa-search"></span></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="Search"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://astral.page"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/" class="article-date">
+  <time class="dt-published" datetime="2023-07-03T21:34:31.000Z" itemprop="datePublished">2023-07-03</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II)
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>Greetings, fellow hackers and tinkerers, and welcome to the second installation of the “Sneaky Snek” blog post series! This series is dedicated to having fun messing around with CPython’s core functionality and modifying arithmetic operator implementation in runtime. In the <a href="2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/">Previous Part</a>, we’ve started diving into CPython’s implementation of the <code>+</code> operator, <code>PyNumber_Add</code>, intercepted number addition operations using <code>gdb</code> breakpoint commands, inspected the <code>PyObject</code> arguments and modified the result in an automated fashion.</p>
+<p>In this part, we will explore inline hooking of the function from within a Python script using <code>ctypes</code>.</p>
+<h3 id="Initial-Recon"><a href="#Initial-Recon" class="headerlink" title="Initial Recon"></a>Initial Recon</h3><p>First, we will recall the function definition:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">PyAPI_FUNC(PyObject *) PyNumber_Add(PyObject *o1, PyObject *o2);</span><br></pre></td></tr></table></figure>
+
+<p>Let’s examine <code>PyNumber_Add</code> and see where it’s code resides in memory.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">(gdb) x/10i PyNumber_Add</span><br><span class="line">   0x632512 &lt;PyNumber_Add&gt;:     endbr64</span><br><span class="line">   0x632516 &lt;PyNumber_Add+4&gt;:   push   %r12</span><br><span class="line">   0x632518 &lt;PyNumber_Add+6&gt;:   push   %rbp</span><br><span class="line">   0x632519 &lt;PyNumber_Add+7&gt;:   push   %rbx</span><br><span class="line">   0x63251a &lt;PyNumber_Add+8&gt;:   mov    %rdi,%rbx</span><br><span class="line">   0x63251d &lt;PyNumber_Add+11&gt;:  mov    %rsi,%rbp</span><br><span class="line">   0x632520 &lt;PyNumber_Add+14&gt;:  mov    $0x0,%edx</span><br><span class="line">   0x632525 &lt;PyNumber_Add+19&gt;:  call   0x630fec &lt;binary_op1&gt;</span><br><span class="line">   0x63252a &lt;PyNumber_Add+24&gt;:  cmp    $0x8f5ef0,%rax</span><br><span class="line">   0x632530 &lt;PyNumber_Add+30&gt;:  je     0x632537 &lt;PyNumber_Add+37&gt;</span><br><span class="line">(gdb) info proc map</span><br><span class="line">      Start Addr           End Addr       Size     Offset  Perms  objfile</span><br><span class="line">        0x400000           0x423000    0x23000        0x0  r--p   /usr/bin/python3.8d</span><br><span class="line">        0x423000           0x691000   0x26e000    0x23000  r-xp   /usr/bin/python3.8d</span><br><span class="line">        0x691000           0x8e7000   0x256000   0x291000  r--p   /usr/bin/python3.8d</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p>Great, we have at least 30 bytes of code. That’s more than enough to insert a <code>jmp</code>! There is a problem, though - our code is mapped to a segment with <code>r-xp</code> permissions, so we are <a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=otCpCn0l4Wo">missing</a> the “write” permission. This is common for code segments in programs, as there is usually no need to have write permissions for code segments (unless <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Just-in-time_compilation">JIT</a> is being used). We will deal with this later.</p>
+<h3 id="The-Plan"><a href="#The-Plan" class="headerlink" title="The Plan"></a>The Plan</h3><p>Our objective is to trick Python into believing that “2 + 2 &#x3D; 5”.<br>For this purpose, we will redirect execution to a custom function that will check the operands and modify the result if necessary.</p>
+<p>We want a Python script that will:</p>
+<ul>
+<li>Create a custom version of the function</li>
+<li>Load it into Python’s memory</li>
+<li>Locate the <code>PyNumber_Add</code>‘s memory address</li>
+<li>Change it’s page permissions to writable</li>
+<li>Patch the first bytes of <code>PyNumber_Add</code> with a jump to our function</li>
+<li>Run some tests</li>
+</ul>
+<p>Let’s break these down, one by one.</p>
+<h3 id="Creating-my-add"><a href="#Creating-my-add" class="headerlink" title="Creating my_add"></a>Creating <code>my_add</code></h3><p>While there are advanced ways of inserting code into the memory space of a running process, we will keep things simple and go with loading a shared object (<code>.so</code>). Python has it’s own <a target="_blank" rel="noopener" href="https://docs.python.org/3/c-api/">C API</a> that allows us to extend Python, deal with <code>PyObject</code>s and even run Python from C. This will come in handy!</p>
+<p><strong>Note</strong>: You may need to install <code>python3-dev</code> for the CPython headers.</p>
+<p>Since we are planning to practically destroy <code>PyNumber_Add</code>, we will need a different way to calculate the result. There are safer ways to implement a generic and reusable hook, but for our purposes and in the spirit of having fun, I’ve decided on a quirky approach: <code>a + b</code> is mathematically equivalent to <code>a - (-b)</code>! We will use this to our advantage and implement <code>my_add</code> as follows:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;Python.h&gt;</span></span></span><br><span class="line"></span><br><span class="line">PyObject* <span class="title function_">my_add</span><span class="params">(PyObject* a, PyObject* b)</span> &#123;</span><br><span class="line">    <span class="comment">// Increase reference count to prevent garbage collection</span></span><br><span class="line">    Py_INCREF(a);</span><br><span class="line">    Py_INCREF(b);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Check if both arguments are ints</span></span><br><span class="line">    <span class="keyword">if</span> (PyLong_Check(a) &amp;&amp; PyLong_Check(b)) &#123;</span><br><span class="line">        <span class="comment">// Check if both arguments are 2</span></span><br><span class="line">        <span class="keyword">if</span> (PyLong_AsLong(a) == <span class="number">2</span> &amp;&amp; PyLong_AsLong(b) == <span class="number">2</span>) &#123;</span><br><span class="line">            Py_DECREF(a);</span><br><span class="line">            Py_DECREF(b);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// Return 5</span></span><br><span class="line">            <span class="keyword">return</span> PyLong_FromLong(<span class="number">5</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Return a - (-b)</span></span><br><span class="line">        PyObject* neg_b = PyNumber_Negative(b);</span><br><span class="line">        PyObject* result = PyNumber_Subtract(a, neg_b);</span><br><span class="line">        Py_DECREF(a);</span><br><span class="line">        Py_DECREF(b);</span><br><span class="line">        Py_DECREF(neg_b);</span><br><span class="line">        <span class="keyword">return</span> result;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Invalid arguments, return Py_None</span></span><br><span class="line">    Py_DECREF(a);</span><br><span class="line">    Py_DECREF(b);</span><br><span class="line">    <span class="keyword">return</span> Py_None;    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>We will compile this into a shared object using the following command:</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc -shared -fPIC -o my_add.so my_add.c $(python3-config --cflags --ldflags)</span><br></pre></td></tr></table></figure>
+
+<h3 id="Loading-my-add-into-Python’s-memory"><a href="#Loading-my-add-into-Python’s-memory" class="headerlink" title="Loading my_add into Python’s memory"></a>Loading <code>my_add</code> into Python’s memory</h3><p>We can now use <code>ctypes.CDLL()</code> to load <code>my_add.so</code> into Python’s memory and get a pointer to our function. This proves to be a little tricky, because <code>ctypes</code> does not expose a direct way to get a pointer to a function. <code>ctypes</code> does, however, allow us to get a pointer to the variable that holds the function pointer. We can then dereference it to get the actual function pointer.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> ctypes</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">deref_ptr</span>(<span class="params">ptr</span>):</span><br><span class="line">    <span class="keyword">return</span> ctypes.cast(ptr, ctypes.POINTER(ctypes.c_void_p)).contents.value</span><br><span class="line"></span><br><span class="line">my_add = deref_ptr(ctypes.addressof(ctypes.CDLL(<span class="string">&#x27;./my_add.so&#x27;</span>).my_add))</span><br></pre></td></tr></table></figure>
+
+<h3 id="Locating-PyNumber-Add‘s-memory-address"><a href="#Locating-PyNumber-Add‘s-memory-address" class="headerlink" title="Locating PyNumber_Add‘s memory address"></a>Locating <code>PyNumber_Add</code>‘s memory address</h3><p>We can use <code>ctypes</code> again to get a pointer to <code>PyNumber_Add</code> (It knows…!):</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pynumber_add = deref_ptr(ctypes.addressof(ctypes.pythonapi.PyNumber_Add))</span><br></pre></td></tr></table></figure>
+
+<h3 id="Changing-PyNumber-Add‘s-page-permissions-to-writable"><a href="#Changing-PyNumber-Add‘s-page-permissions-to-writable" class="headerlink" title="Changing PyNumber_Add‘s page permissions to writable"></a>Changing <code>PyNumber_Add</code>‘s page permissions to writable</h3><p>We will use <a target="_blank" rel="noopener" href="https://linux.die.net/man/2/mprotect"><code>mprotect()</code></a> to change the page permissions of <code>PyNumber_Add</code> to <code>rwx</code> and make the memory writable. To grab the page address, we can use a simple trick <del>stolen</del> borrowed from <a target="_blank" rel="noopener" href="https://stackoverflow.com/a/6387879/3722114">this StackOverflow answer</a>. Oh yeah, and <code>ctypes</code> let’s us call <code>mprotect()</code> directly from Python!</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">page_size = os.sysconf(<span class="string">&#x27;SC_PAGE_SIZE&#x27;</span>)</span><br><span class="line">page_addr = pynumber_add &amp; ~(page_size - <span class="number">1</span>)</span><br><span class="line">page_perms = <span class="number">0x1</span> | <span class="number">0x2</span> | <span class="number">0x4</span>  <span class="comment"># PROT_READ | PROT_WRITE | PROT_EXEC</span></span><br><span class="line">libc = ctypes.CDLL(ctypes.util.find_library(<span class="string">&#x27;c&#x27;</span>))</span><br><span class="line">result = libc.mprotect(page_addr, page_size, page_perms)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;mprotect(addr=<span class="subst">&#123;<span class="built_in">hex</span>(page_addr)&#125;</span>, size=<span class="subst">&#123;<span class="built_in">hex</span>(page_size)&#125;</span>, perms=<span class="subst">&#123;<span class="built_in">hex</span>(page_perms)&#125;</span>) ret=<span class="subst">&#123;result&#125;</span> errno=<span class="subst">&#123;ctypes.get_errno()&#125;</span>&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<p><em>Note</em>: If we wanted to support Windows, we could use <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-virtualprotect"><code>VirtualProtect()</code></a> instead of <code>mprotect()</code>.</p>
+<h3 id="Patching-the-first-bytes-of-PyNumber-Add-with-a-jump-to-our-function"><a href="#Patching-the-first-bytes-of-PyNumber-Add-with-a-jump-to-our-function" class="headerlink" title="Patching the first bytes of PyNumber_Add with a jump to our function"></a>Patching the first bytes of <code>PyNumber_Add</code> with a jump to our function</h3><p>Let’s code a simple trampoline that will redirect execution to <code>my_add</code>:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mov rax, 0x123456789abcdef0</span><br><span class="line">jmp rax</span><br></pre></td></tr></table></figure>
+
+<p>Assembling this code, we get some bytes. Let’s use them and replace the <code>0x123456789abcdef0</code> with the address of <code>my_add</code>:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">shellcode = <span class="string">b&#x27;\x48\xb8&#x27;</span> + my_add.to_bytes(<span class="number">8</span>, <span class="string">&#x27;little&#x27;</span>) + <span class="string">b&#x27;\xff\xe0&#x27;</span></span><br><span class="line">shellcode_size = <span class="built_in">len</span>(shellcode)</span><br><span class="line">shellcode = ctypes.c_char_p(shellcode)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;Address of shellcode trampoline:&quot;</span>, <span class="built_in">hex</span>(ctypes.addressof(shellcode)))</span><br></pre></td></tr></table></figure>
+
+<p>At this point, we have everything we need to patch <code>PyNumber_Add</code> with a jump to <code>my_add</code>. We will use <code>ctypes</code> again to write our shellcode to the first bytes of <code>PyNumber_Add</code>:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">result = ctypes.memmove(pynumber_add, shellcode, shellcode_size)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;memmove:&quot;</span>, <span class="built_in">hex</span>(result))</span><br></pre></td></tr></table></figure>
+
+<h3 id="Adding-some-tests"><a href="#Adding-some-tests" class="headerlink" title="Adding some tests"></a>Adding some tests</h3><p>We’ll insert some number addition operations and see what happens. There is a caveat to be aware of - Python calculates <code>2 + 2</code> at compile time and stores the result in the bytecode. We can use <code>eval()</code> to force Python to recalculate the result every time.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">print</span>(<span class="string">&quot;1 + 1 =&quot;</span>, <span class="built_in">eval</span>(<span class="string">&quot;1 + 1&quot;</span>))</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;2 + 2 =&quot;</span>, <span class="built_in">eval</span>(<span class="string">&quot;2 + 2&quot;</span>))</span><br></pre></td></tr></table></figure>
+
+<h3 id="Putting-it-all-together"><a href="#Putting-it-all-together" class="headerlink" title="Putting it all together"></a>Putting it all together</h3><figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> ctypes</span><br><span class="line"><span class="keyword">import</span> ctypes.util</span><br><span class="line"><span class="keyword">import</span> os</span><br><span class="line"><span class="keyword">import</span> sys</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">deref_ptr</span>(<span class="params">ptr</span>):</span><br><span class="line">    <span class="keyword">return</span> ctypes.cast(ptr, ctypes.POINTER(ctypes.c_void_p)).contents.value</span><br><span class="line"></span><br><span class="line"><span class="comment"># Get a pointer to my_add</span></span><br><span class="line">my_add = deref_ptr(ctypes.addressof(ctypes.CDLL(<span class="string">&#x27;./my_add.so&#x27;</span>).my_add))</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;Address of my_add:&quot;</span>, <span class="built_in">hex</span>(my_add))</span><br><span class="line"></span><br><span class="line"><span class="comment"># Get a pointer to PyNumber_Add</span></span><br><span class="line">pynumber_add = deref_ptr(ctypes.addressof(ctypes.pythonapi.PyNumber_Add))</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;Address of PyNumber_Add:&quot;</span>, <span class="built_in">hex</span>(pynumber_add))</span><br><span class="line"></span><br><span class="line"><span class="comment"># Use ctypes and mprotect to make the memory writable</span></span><br><span class="line">page_size = os.sysconf(<span class="string">&#x27;SC_PAGE_SIZE&#x27;</span>)</span><br><span class="line">page_addr = pynumber_add &amp; ~(page_size - <span class="number">1</span>)</span><br><span class="line">page_perms = <span class="number">0x1</span> | <span class="number">0x2</span> | <span class="number">0x4</span>  <span class="comment"># PROT_READ | PROT_WRITE | PROT_EXEC</span></span><br><span class="line">libc = ctypes.CDLL(ctypes.util.find_library(<span class="string">&#x27;c&#x27;</span>))</span><br><span class="line">result = libc.mprotect(page_addr, page_size, page_perms)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;mprotect(addr=<span class="subst">&#123;<span class="built_in">hex</span>(page_addr)&#125;</span>, size=<span class="subst">&#123;<span class="built_in">hex</span>(page_size)&#125;</span>, perms=<span class="subst">&#123;<span class="built_in">hex</span>(page_perms)&#125;</span>) ret=<span class="subst">&#123;result&#125;</span> errno=<span class="subst">&#123;ctypes.get_errno()&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Create a trampoline to our function</span></span><br><span class="line">shellcode = <span class="string">b&quot;\x48\xb8&quot;</span> + my_add.to_bytes(<span class="number">8</span>, byteorder=<span class="string">&#x27;little&#x27;</span>) <span class="comment"># mov rax, my_add</span></span><br><span class="line">shellcode += <span class="string">b&quot;\xff\xe0&quot;</span> <span class="comment"># jmp rax</span></span><br><span class="line">shellcode_size = <span class="built_in">len</span>(shellcode)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Get a pointer to our shellcode trampoline</span></span><br><span class="line">shellcode = ctypes.c_char_p(shellcode)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;Address of shellcode trampoline:&quot;</span>, <span class="built_in">hex</span>(ctypes.addressof(shellcode)))</span><br><span class="line"></span><br><span class="line"><span class="comment"># Copy the shellcode to the start of PyNumber_Add</span></span><br><span class="line">result = ctypes.memmove(pynumber_add, shellcode, shellcode_size)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;memmove:&quot;</span>, <span class="built_in">hex</span>(result))</span><br><span class="line"></span><br><span class="line"><span class="comment"># Test</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;1 + 1 =&quot;</span>, <span class="built_in">eval</span>(<span class="string">&quot;1 + 1&quot;</span>))</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;2 + 2 =&quot;</span>, <span class="built_in">eval</span>(<span class="string">&quot;2 + 2&quot;</span>))</span><br></pre></td></tr></table></figure>
+
+<h3 id="Hammer-Time"><a href="#Hammer-Time" class="headerlink" title="Hammer Time!"></a>Hammer Time!</h3><p>Let’s run our script and see what happens:</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ python snek.py</span><br><span class="line">Address of my_add: 0x7f1070ce51a0</span><br><span class="line">Address of PyNumber_Add: 0x50f750</span><br><span class="line">mprotect(addr=0x50f000, size=0x1000, perms=0x7) ret=0 errno=0</span><br><span class="line">Address of shellcode trampoline: 0x7f1070c24390</span><br><span class="line">memmove: 0x50f750</span><br><span class="line">1 + 1 = 2</span><br><span class="line">2 + 2 = 5</span><br></pre></td></tr></table></figure>
+
+<p>It works!! Good snek!</p>
+<p>I hope you enjoyed taking this journey into Python internals with me!<br>In the <a href="">Next Part</a>, we will explore further extending this into a backdoor that given specific input, will give us a reverse shell.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/" data-id="cljnja7p1000iduos0byyet10" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II)" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/hacking/" rel="tag">hacking</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/internals/" rel="tag">internals</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/python/" rel="tag">python</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/tech/" rel="tag">tech</a></li></ul>
+
+    </footer>
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2023/07/04/NixOS-is-so-Cool/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Newer</strong>
+      <div class="article-nav-title">
+        
+          NixOS is so Cool!
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/" id="article-nav-older" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">Older</strong>
+      <div class="article-nav-title">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)</div>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+</section>
+        
+          <aside id="sidebar">
+  
+    
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tags</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/documentation/" rel="tag">documentation</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/focus/" rel="tag">focus</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/food/" rel="tag">food</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/gems-off-the-internet/" rel="tag">gems-off-the-internet</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/hacking/" rel="tag">hacking</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/internals/" rel="tag">internals</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/poetry/" rel="tag">poetry</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/python/" rel="tag">python</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/self-improvement/" rel="tag">self-improvement</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tech/" rel="tag">tech</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Tag Cloud</h3>
+    <div class="widget tagcloud">
+      <a href="/tags/documentation/" style="font-size: 10px;">documentation</a> <a href="/tags/focus/" style="font-size: 17.5px;">focus</a> <a href="/tags/food/" style="font-size: 10px;">food</a> <a href="/tags/gems-off-the-internet/" style="font-size: 10px;">gems-off-the-internet</a> <a href="/tags/hacking/" style="font-size: 12.5px;">hacking</a> <a href="/tags/internals/" style="font-size: 12.5px;">internals</a> <a href="/tags/linux/" style="font-size: 10px;">linux</a> <a href="/tags/poetry/" style="font-size: 10px;">poetry</a> <a href="/tags/python/" style="font-size: 12.5px;">python</a> <a href="/tags/self-improvement/" style="font-size: 20px;">self-improvement</a> <a href="/tags/tech/" style="font-size: 15px;">tech</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Archives</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/07/">July 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/06/">June 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/05/">May 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/04/">April 2023</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">Recent Posts</h3>
+    <div class="widget">
+      <ul>
+        
+          <li>
+            <a href="/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)</a>
+          </li>
+        
+          <li>
+            <a href="/2023/07/04/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/">An Exercise in Self Love: What Would You Wish for Yourself?</a>
+          </li>
+        
+          <li>
+            <a href="/2023/07/04/NixOS-is-so-Cool/">NixOS is so Cool!</a>
+          </li>
+        
+          <li>
+            <a href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II)</a>
+          </li>
+        
+          <li>
+            <a href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+
+  
+</aside>
+        
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2023 Astral<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
+  </div>
+</footer>
+
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/" class="mobile-nav-link">Home</a>
+  
+    <a href="/archives" class="mobile-nav-link">Archives</a>
+  
+    <a href="/about" class="mobile-nav-link">About</a>
+  
+</nav>
+    
+
+
+<script src="/js/jquery-3.6.4.min.js"></script>
+
+
+
+  
+<script src="/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/js/script.js"></script>
+
+
+
+
+
+  </div>
+</body>
+</html>

