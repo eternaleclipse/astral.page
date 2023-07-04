@@ -119,7 +119,7 @@ Continuing.
 
 Let's do a simple addition:
 ```py
->>>  `0x1234 + 0x5678`
+>>>  0x1234 + 0x5678
 ```
 
 We get a breakpoint hit! let's look back at the function definition.
@@ -168,7 +168,7 @@ We'll combine this with a conditional breakpoint - if `v` and `w` both contain 2
 Using `Ctrl-x + a`, we can switch to source code view and find the target line to set the breakpoint on - In my case, it is `abstract.c:959`.
 
 ```
-(gdb) b abstract.c:959 if ((* ((unsigned int *) v + 6) == 2) && (* ((unsigned int *) v + 6) == 2))
+(gdb) b abstract.c:959 if ((* ((unsigned int *) v + 6) == 2) && (* ((unsigned int *) w + 6) == 2))
 Breakpoint 2 at 0x63252a: file ../Objects/abstract.c, line 959.
 (gdb) commands
 Type commands for breakpoint(s) 2, one per line.
