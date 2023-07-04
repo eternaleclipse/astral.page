@@ -163,7 +163,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/" data-id="cljnja7p3000kduos3v586z55" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/" data-id="cljnjisz8000kdjor6agj3rcx" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -178,7 +178,7 @@
     <article id="post-An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
     <a href="/2023/07/04/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/" class="article-date">
-  <time class="dt-published" datetime="2023-07-04T00:10:10.693Z" itemprop="datePublished">2023-07-04</time>
+  <time class="dt-published" datetime="2023-07-04T00:16:55.167Z" itemprop="datePublished">2023-07-04</time>
 </a>
     
   </div>
@@ -297,7 +297,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/07/04/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/" data-id="cljnja7oe0001duosepzibunr" data-title="An Exercise in Self Love: What Would You Wish for Yourself?" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/07/04/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/" data-id="cljnjisyj0001djor9bjqe1sv" data-title="An Exercise in Self Love: What Would You Wish for Yourself?" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -314,7 +314,7 @@
     <article id="post-NixOS-is-so-Cool" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
   <div class="article-meta">
     <a href="/2023/07/04/NixOS-is-so-Cool/" class="article-date">
-  <time class="dt-published" datetime="2023-07-04T00:10:10.693Z" itemprop="datePublished">2023-07-04</time>
+  <time class="dt-published" datetime="2023-07-04T00:16:55.167Z" itemprop="datePublished">2023-07-04</time>
 </a>
     
   </div>
@@ -370,7 +370,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/07/04/NixOS-is-so-Cool/" data-id="cljnja7os0009duos1yii7anr" data-title="NixOS is so Cool!" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/07/04/NixOS-is-so-Cool/" data-id="cljnjisyy0009djorg02ce1r1" data-title="NixOS is so Cool!" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -406,7 +406,7 @@
     
     <div class="e-content article-entry" itemprop="articleBody">
       
-        <p>Greetings, fellow hackers and tinkerers, and welcome to the second installation of the “Sneaky Snek” blog post series! This series is dedicated to having fun messing around with CPython’s core functionality and modifying arithmetic operator implementation in runtime. In the <a href="2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/">Previous Part</a>, we’ve started diving into CPython’s implementation of the <code>+</code> operator, <code>PyNumber_Add</code>, intercepted number addition operations using <code>gdb</code> breakpoint commands, inspected the <code>PyObject</code> arguments and modified the result in an automated fashion.</p>
+        <p>Greetings, fellow hackers and tinkerers, and welcome to the second installation of the “Sneaky Snek” blog post series! This series is dedicated to having fun messing around with CPython’s core functionality and modifying arithmetic operator implementation in runtime. In the <a href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/">Previous Part</a>, we’ve started diving into CPython’s implementation of the <code>+</code> operator, <code>PyNumber_Add</code>, intercepted number addition operations using <code>gdb</code> breakpoint commands, inspected the <code>PyObject</code> arguments and modified the result in an automated fashion.</p>
 <p>In this part, we will explore inline hooking of the function from within a Python script using <code>ctypes</code>.</p>
 <h3 id="Initial-Recon"><a href="#Initial-Recon" class="headerlink" title="Initial Recon"></a>Initial Recon</h3><p>First, we will recall the function definition:</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">PyAPI_FUNC(PyObject *) PyNumber_Add(PyObject *o1, PyObject *o2);</span><br></pre></td></tr></table></figure>
@@ -462,12 +462,12 @@
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ python snek.py</span><br><span class="line">Address of my_add: 0x7f1070ce51a0</span><br><span class="line">Address of PyNumber_Add: 0x50f750</span><br><span class="line">mprotect(addr=0x50f000, size=0x1000, perms=0x7) ret=0 errno=0</span><br><span class="line">Address of shellcode trampoline: 0x7f1070c24390</span><br><span class="line">memmove: 0x50f750</span><br><span class="line">1 + 1 = 2</span><br><span class="line">2 + 2 = 5</span><br></pre></td></tr></table></figure>
 
 <p>It works!! Good snek!</p>
-<p>I hope you enjoyed taking this journey into Python internals with me!<br>In the <a href="">Next Part</a>, we will explore further extending this into a backdoor that given specific input, will give us a reverse shell.</p>
+<p>I hope you enjoyed taking this journey into Python internals with me!<br>In the <a href="/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/">Next Part</a>, we will explore further extending this into a backdoor that given specific input, will give us a reverse shell.</p>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/" data-id="cljnja7p1000iduos0byyet10" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II)" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/" data-id="cljnjisz6000idjor8fq2fwo6" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II)" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -559,12 +559,12 @@
 <figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="number">1</span> + <span class="number">1</span></span><br><span class="line"><span class="number">2</span></span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="number">2</span> + <span class="number">2</span></span><br><span class="line"><span class="number">5</span></span><br><span class="line">&gt;&gt;&gt;</span><br></pre></td></tr></table></figure>
 
 <p>We are successfully intercepting number addition operations with <code>gdb</code>!1</p>
-<p>In the <a href="2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/">Next part</a>, we will look at implementing this hook from within Python, without the use of a debugger.</p>
+<p>In the <a href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/">Next part</a>, we will look at implementing this hook from within Python, without the use of a debugger.</p>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/" data-id="cljnja7oz000hduos02gccd1z" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/" data-id="cljnjisz5000hdjor6ko7hhfa" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -615,7 +615,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/06/10/Guilt-Free-Reflection/" data-id="cljnja7oo0005duosf5qw6e69" data-title="Guilt-Free Reflection" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/06/10/Guilt-Free-Reflection/" data-id="cljnjisyt0005djorhdfy0j3x" data-title="Guilt-Free Reflection" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -662,7 +662,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/20/Poem-Kiss-the-Stars-Goodbye/" data-id="cljnja7ou000bduosg6yqem6d" data-title="Poem: Kiss the Stars Goodbye" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/20/Poem-Kiss-the-Stars-Goodbye/" data-id="cljnjisz0000bdjorer4lddz4" data-title="Poem: Kiss the Stars Goodbye" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -708,7 +708,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/18/The-Importance-of-Preserving-Progress/" data-id="cljnja7p6000pduos8gco3hae" data-title="The Importance of Preserving Progress" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/18/The-Importance-of-Preserving-Progress/" data-id="cljnjiszb000pdjorhmsj4n0c" data-title="The Importance of Preserving Progress" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -753,7 +753,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/15/Nature-and-Attention-Restoration/" data-id="cljnja7op0006duos65qv05hu" data-title="Nature&#39;s Restorative Powers" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/15/Nature-and-Attention-Restoration/" data-id="cljnjisyv0006djore1gv2sob" data-title="Nature&#39;s Restorative Powers" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -802,7 +802,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/14/True-Freedom-Requires-Accepting-Death/" data-id="cljnja7p8000uduos2okua8pw" data-title="True Freedom Requires Accepting Death" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/14/True-Freedom-Requires-Accepting-Death/" data-id="cljnjisze000udjor3vzybi2h" data-title="True Freedom Requires Accepting Death" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       

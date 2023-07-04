@@ -14,7 +14,7 @@
 <meta property="og:description" content="Greetings, fellow hackers and tinkerers, and welcome to the second installation of the “Sneaky Snek” blog post series! This series is dedicated to having fun messing around with CPython’s core functio">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2023-07-03T21:34:31.000Z">
-<meta property="article:modified_time" content="2023-07-04T00:10:10.693Z">
+<meta property="article:modified_time" content="2023-07-04T00:16:55.167Z">
 <meta property="article:author" content="Astral">
 <meta property="article:tag" content="tech">
 <meta property="article:tag" content="python">
@@ -107,7 +107,7 @@
     
     <div class="e-content article-entry" itemprop="articleBody">
       
-        <p>Greetings, fellow hackers and tinkerers, and welcome to the second installation of the “Sneaky Snek” blog post series! This series is dedicated to having fun messing around with CPython’s core functionality and modifying arithmetic operator implementation in runtime. In the <a href="2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/">Previous Part</a>, we’ve started diving into CPython’s implementation of the <code>+</code> operator, <code>PyNumber_Add</code>, intercepted number addition operations using <code>gdb</code> breakpoint commands, inspected the <code>PyObject</code> arguments and modified the result in an automated fashion.</p>
+        <p>Greetings, fellow hackers and tinkerers, and welcome to the second installation of the “Sneaky Snek” blog post series! This series is dedicated to having fun messing around with CPython’s core functionality and modifying arithmetic operator implementation in runtime. In the <a href="/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/">Previous Part</a>, we’ve started diving into CPython’s implementation of the <code>+</code> operator, <code>PyNumber_Add</code>, intercepted number addition operations using <code>gdb</code> breakpoint commands, inspected the <code>PyObject</code> arguments and modified the result in an automated fashion.</p>
 <p>In this part, we will explore inline hooking of the function from within a Python script using <code>ctypes</code>.</p>
 <h3 id="Initial-Recon"><a href="#Initial-Recon" class="headerlink" title="Initial Recon"></a>Initial Recon</h3><p>First, we will recall the function definition:</p>
 <figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">PyAPI_FUNC(PyObject *) PyNumber_Add(PyObject *o1, PyObject *o2);</span><br></pre></td></tr></table></figure>
@@ -163,12 +163,12 @@
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ python snek.py</span><br><span class="line">Address of my_add: 0x7f1070ce51a0</span><br><span class="line">Address of PyNumber_Add: 0x50f750</span><br><span class="line">mprotect(addr=0x50f000, size=0x1000, perms=0x7) ret=0 errno=0</span><br><span class="line">Address of shellcode trampoline: 0x7f1070c24390</span><br><span class="line">memmove: 0x50f750</span><br><span class="line">1 + 1 = 2</span><br><span class="line">2 + 2 = 5</span><br></pre></td></tr></table></figure>
 
 <p>It works!! Good snek!</p>
-<p>I hope you enjoyed taking this journey into Python internals with me!<br>In the <a href="">Next Part</a>, we will explore further extending this into a backdoor that given specific input, will give us a reverse shell.</p>
+<p>I hope you enjoyed taking this journey into Python internals with me!<br>In the <a href="/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/">Next Part</a>, we will explore further extending this into a backdoor that given specific input, will give us a reverse shell.</p>
 
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/" data-id="cljnja7p1000iduos0byyet10" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II)" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/" data-id="cljnjisz6000idjor8fq2fwo6" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II)" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
