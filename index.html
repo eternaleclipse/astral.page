@@ -163,7 +163,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/" data-id="cljnkn8j7000kcop6atx5gki0" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/07/04/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-III/" data-id="cljo0984q000kc6ou6w0ud8g1" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part III)" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -260,7 +260,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/" data-id="cljnkn8j6000icop6au5s0uu2" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II)" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/" data-id="cljo0984p000ic6ouhgazcta2" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part II)" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -330,7 +330,7 @@
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ gdb -p `pidof python3-dbg`</span><br><span class="line">GNU gdb (GDB) 12.1</span><br><span class="line">...</span><br><span class="line">0x00007f6196ad3f7a in select () from /lib/x86_64-linux-gnu/libc.so.6</span><br><span class="line">(gdb) b PyNumber_Add</span><br><span class="line">Breakpoint 1 at 0x632512: file ../Objects/abstract.c, line 957.</span><br><span class="line">(gdb) c</span><br><span class="line">Continuing.</span><br></pre></td></tr></table></figure>
 
 <p>Let’s do a simple addition:</p>
-<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span> `<span class="number">0x1234</span> + <span class="number">0x5678</span>`</span><br></pre></td></tr></table></figure>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span> <span class="number">0x1234</span> + <span class="number">0x5678</span></span><br></pre></td></tr></table></figure>
 
 <p>We get a breakpoint hit! let’s look back at the function definition.</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Breakpoint 1, PyNumber_Add (v=0x7f6196567f00, w=0x7f619649a800) at ../Objects/abstract.c:957</span><br><span class="line">957     &#123;</span><br></pre></td></tr></table></figure>
@@ -346,7 +346,7 @@
 
 <p>We can setup a simple hook using breakpoint commands.<br>This feature that allows you to run a <code>gdb</code> command when the debugger reaches a certain breakpoint.<br>We’ll combine this with a conditional breakpoint - if <code>v</code> and <code>w</code> both contain 2, write 5 to the returned <code>result</code> object.</p>
 <p>Using <code>Ctrl-x + a</code>, we can switch to source code view and find the target line to set the breakpoint on - In my case, it is <code>abstract.c:959</code>.</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">(gdb) b abstract.c:959 if ((* ((unsigned int *) v + 6) == 2) &amp;&amp; (* ((unsigned int *) v + 6) == 2))</span><br><span class="line">Breakpoint 2 at 0x63252a: file ../Objects/abstract.c, line 959.</span><br><span class="line">(gdb) commands</span><br><span class="line">Type commands for breakpoint(s) 2, one per line.</span><br><span class="line">End with a line saying just &quot;end&quot;.</span><br><span class="line">&gt;set * ((unsigned int *) result + 6) = 5</span><br><span class="line">&gt;c</span><br><span class="line">&gt;end</span><br><span class="line">(gdb) c</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">(gdb) b abstract.c:959 if ((* ((unsigned int *) v + 6) == 2) &amp;&amp; (* ((unsigned int *) w + 6) == 2))</span><br><span class="line">Breakpoint 2 at 0x63252a: file ../Objects/abstract.c, line 959.</span><br><span class="line">(gdb) commands</span><br><span class="line">Type commands for breakpoint(s) 2, one per line.</span><br><span class="line">End with a line saying just &quot;end&quot;.</span><br><span class="line">&gt;set * ((unsigned int *) result + 6) = 5</span><br><span class="line">&gt;c</span><br><span class="line">&gt;end</span><br><span class="line">(gdb) c</span><br></pre></td></tr></table></figure>
 
 <p>Let’s see what happens.</p>
 <figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="number">1</span> + <span class="number">1</span></span><br><span class="line"><span class="number">2</span></span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="number">2</span> + <span class="number">2</span></span><br><span class="line"><span class="number">5</span></span><br><span class="line">&gt;&gt;&gt;</span><br></pre></td></tr></table></figure>
@@ -357,7 +357,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/" data-id="cljnkn8j5000hcop6e1y645a8" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/" data-id="cljo0984o000hc6ouh6ca12cs" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -408,7 +408,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/06/10/Guilt-Free-Reflection/" data-id="cljnkn8ix0005cop66o1j0q8b" data-title="Guilt-Free Reflection" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/06/10/Guilt-Free-Reflection/" data-id="cljo0984g0005c6ouctklahcu" data-title="Guilt-Free Reflection" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -544,7 +544,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/28/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/" data-id="cljnkn8iq0001cop646dm1kku" data-title="An Exercise in Self Love: What Would You Wish for Yourself?" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/28/An-Exercise-in-Self-Love-What-Would-You-Wish-for-Yourself/" data-id="cljo098490001c6ou8njqgm3h" data-title="An Exercise in Self Love: What Would You Wish for Yourself?" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -617,7 +617,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/26/NixOS-is-so-Cool/" data-id="cljnkn8j10009cop60wk11uza" data-title="NixOS is so Cool!" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/26/NixOS-is-so-Cool/" data-id="cljo0984j0009c6ou5gi1f1x1" data-title="NixOS is so Cool!" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -664,7 +664,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/20/Poem-Kiss-the-Stars-Goodbye/" data-id="cljnkn8j1000bcop69eph39m6" data-title="Poem: Kiss the Stars Goodbye" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/20/Poem-Kiss-the-Stars-Goodbye/" data-id="cljo0984k000bc6ou3yv05k0h" data-title="Poem: Kiss the Stars Goodbye" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -710,7 +710,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/18/The-Importance-of-Preserving-Progress/" data-id="cljnkn8j9000pcop6a19q3hw4" data-title="The Importance of Preserving Progress" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/18/The-Importance-of-Preserving-Progress/" data-id="cljo0984s000pc6oua14b8kyv" data-title="The Importance of Preserving Progress" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -755,7 +755,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/15/Nature-and-Attention-Restoration/" data-id="cljnkn8iy0006cop62gsyfl34" data-title="Nature&#39;s Restorative Powers" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/15/Nature-and-Attention-Restoration/" data-id="cljo0984h0006c6ou3hyw1uab" data-title="Nature&#39;s Restorative Powers" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
@@ -804,7 +804,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/05/14/True-Freedom-Requires-Accepting-Death/" data-id="cljnkn8jb000ucop6a2rv1xk3" data-title="True Freedom Requires Accepting Death" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/05/14/True-Freedom-Requires-Accepting-Death/" data-id="cljo0984t000uc6ouflyoc06c" data-title="True Freedom Requires Accepting Death" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       

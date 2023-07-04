@@ -14,7 +14,7 @@
 <meta property="og:description" content="Disclaimer: No Pythons were harmed in the making of this post.Version used: CPython 3.8.10 on Ubuntu 20.04 x86_64 (WSL) Snakes can be scary, but Python is a good snek. Python is our friend!As all good">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2023-07-03T03:26:51.000Z">
-<meta property="article:modified_time" content="2023-07-04T00:48:23.727Z">
+<meta property="article:modified_time" content="2023-07-04T08:05:24.048Z">
 <meta property="article:author" content="Astral">
 <meta property="article:tag" content="tech">
 <meta property="article:tag" content="python">
@@ -141,7 +141,7 @@
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ gdb -p `pidof python3-dbg`</span><br><span class="line">GNU gdb (GDB) 12.1</span><br><span class="line">...</span><br><span class="line">0x00007f6196ad3f7a in select () from /lib/x86_64-linux-gnu/libc.so.6</span><br><span class="line">(gdb) b PyNumber_Add</span><br><span class="line">Breakpoint 1 at 0x632512: file ../Objects/abstract.c, line 957.</span><br><span class="line">(gdb) c</span><br><span class="line">Continuing.</span><br></pre></td></tr></table></figure>
 
 <p>Let’s do a simple addition:</p>
-<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span> `<span class="number">0x1234</span> + <span class="number">0x5678</span>`</span><br></pre></td></tr></table></figure>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span> <span class="number">0x1234</span> + <span class="number">0x5678</span></span><br></pre></td></tr></table></figure>
 
 <p>We get a breakpoint hit! let’s look back at the function definition.</p>
 <figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Breakpoint 1, PyNumber_Add (v=0x7f6196567f00, w=0x7f619649a800) at ../Objects/abstract.c:957</span><br><span class="line">957     &#123;</span><br></pre></td></tr></table></figure>
@@ -157,7 +157,7 @@
 
 <p>We can setup a simple hook using breakpoint commands.<br>This feature that allows you to run a <code>gdb</code> command when the debugger reaches a certain breakpoint.<br>We’ll combine this with a conditional breakpoint - if <code>v</code> and <code>w</code> both contain 2, write 5 to the returned <code>result</code> object.</p>
 <p>Using <code>Ctrl-x + a</code>, we can switch to source code view and find the target line to set the breakpoint on - In my case, it is <code>abstract.c:959</code>.</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">(gdb) b abstract.c:959 if ((* ((unsigned int *) v + 6) == 2) &amp;&amp; (* ((unsigned int *) v + 6) == 2))</span><br><span class="line">Breakpoint 2 at 0x63252a: file ../Objects/abstract.c, line 959.</span><br><span class="line">(gdb) commands</span><br><span class="line">Type commands for breakpoint(s) 2, one per line.</span><br><span class="line">End with a line saying just &quot;end&quot;.</span><br><span class="line">&gt;set * ((unsigned int *) result + 6) = 5</span><br><span class="line">&gt;c</span><br><span class="line">&gt;end</span><br><span class="line">(gdb) c</span><br></pre></td></tr></table></figure>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">(gdb) b abstract.c:959 if ((* ((unsigned int *) v + 6) == 2) &amp;&amp; (* ((unsigned int *) w + 6) == 2))</span><br><span class="line">Breakpoint 2 at 0x63252a: file ../Objects/abstract.c, line 959.</span><br><span class="line">(gdb) commands</span><br><span class="line">Type commands for breakpoint(s) 2, one per line.</span><br><span class="line">End with a line saying just &quot;end&quot;.</span><br><span class="line">&gt;set * ((unsigned int *) result + 6) = 5</span><br><span class="line">&gt;c</span><br><span class="line">&gt;end</span><br><span class="line">(gdb) c</span><br></pre></td></tr></table></figure>
 
 <p>Let’s see what happens.</p>
 <figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="number">1</span> + <span class="number">1</span></span><br><span class="line"><span class="number">2</span></span><br><span class="line"><span class="meta">&gt;&gt;&gt; </span><span class="number">2</span> + <span class="number">2</span></span><br><span class="line"><span class="number">5</span></span><br><span class="line">&gt;&gt;&gt;</span><br></pre></td></tr></table></figure>
@@ -168,7 +168,7 @@
       
     </div>
     <footer class="article-footer">
-      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/" data-id="cljnkn8j5000hcop6e1y645a8" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)" class="article-share-link"><span class="fa fa-share">Share</span></a>
+      <a data-url="https://astral.page/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-I/" data-id="cljo0984o000hc6ouh6ca12cs" data-title="Sneaky Snek: Messing with Python&#39;s Internal Functions (Part I)" class="article-share-link"><span class="fa fa-share">Share</span></a>
       
       
       
