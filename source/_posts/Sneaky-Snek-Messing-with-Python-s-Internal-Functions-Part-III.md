@@ -113,7 +113,7 @@ PyObject* my_add(PyObject* a, PyObject* b) {
 ```
 
 ### Persistence
-Python looks for a startup script in the `site-packages/usercustomize.py` file, so we can drop our script from the [Previous Part](2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/) there and it will be loaded automatically. Don't forget to edit the Python script and change the path to `my_add.so` to the correct path on your machine.
+Python looks for a startup script in the `site-packages/usercustomize.py` file, so we can drop our script from the [Previous Part](/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/) there and it will be loaded automatically. Don't forget to edit the Python script and change the path to `my_add.so` to the correct path on your machine.
 
 ```bash
 # Compile our backdoor module
