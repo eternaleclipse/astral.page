@@ -9,7 +9,7 @@ tags:
 
 We're back with another part of the series!
 
-In the [Previous Part](2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/), we've hooked `PyNumber_Add` function using `ctypes` and replaced it with our own implementation.
+In the [Previous Part](/2023/07/03/Sneaky-Snek-Messing-with-Python-s-Internal-Functions-Part-II/), we've hooked `PyNumber_Add` function using `ctypes` and replaced it with our own implementation.
 In this part, we will extend our extension to a backdoor that will return a reverse shell given specific addition operands.
 
 To the drawing board!
