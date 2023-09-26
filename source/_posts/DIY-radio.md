@@ -10,7 +10,7 @@ tags:
 After a very long time of not soldering anything, I finally got myself an [RDA5807 FM Radio Receiver DIY Kit](https://www.icstation.com/rda5807-radio-receiver-with-flashing-indicator-p-15922.html) from [Amazon](https://www.amazon.com/gp/product/B09Y1BJZ6F/). Spent 3 hours straight on this thing and my soldering-phobia is basically gone now. This included some SMD soldering, a bunch of DIP mount and pin headers, wiring, a very hacky antenna solder and frame assembly. I did miss something though because the frequency "Down" button doesn't work.
 
 Some ideas for future improvements:
-- Fix the "Frequency Down" button
+- Fix the "Frequency Down" button - Done
 - Add a 3.5mm headphone jack
 - Some finer volume control (currently there are volume levels 0-10 where "0" is still quite loud)
 - Replace the power socket with a USB-C socket
